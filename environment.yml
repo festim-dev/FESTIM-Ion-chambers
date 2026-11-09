@@ -1,0 +1,14 @@
+# Conda environment for the tritium ion chamber model.
+#   conda env create -f environment.yml
+#   conda activate ion-chambers
+name: ion-chambers
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - festim=2.2rc2          # drift terms (ElectromigrationTerm), OutflowBC
+  - fenics-dolfinx=0.11
+  - numpy>=2               # np.trapezoid
+  - scipy                  # interpolation, brentq
+  - matplotlib             # plots
+  - pillow                 # reading figures extracted from the slides

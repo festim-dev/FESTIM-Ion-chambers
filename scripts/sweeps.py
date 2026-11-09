@@ -1,10 +1,12 @@
 """Response curve (reference 1 L chamber) and L/D sweep at fixed 1 L volume."""
 import sys, gc, json, time
+from pathlib import Path
 import numpy as np
-from chamber_model import Chamber, chamber_volume
+from ion_chambers.chamber_model import Chamber, chamber_volume
 
 A_ROD, VOL, VBIAS = 1.5e-3, 1e-3, 500.0
 NR = (150, 300)
+RESULTS = Path(__file__).resolve().parents[1] / "results"
 
 
 def R_for_aspect(ar):
@@ -34,12 +36,13 @@ def run(R, L, activities, tag):
 
 if __name__ == "__main__":
     which = sys.argv[1]
+    RESULTS.mkdir(exist_ok=True)
     if which == "response":
         R = 0.05
         L = VOL / (np.pi * (R**2 - A_ROD**2))
         acts = np.r_[np.logspace(3, 8, 3), np.logspace(9, 14, 11)]
         res = dict(R=R, L=L, a=A_ROD, V=VBIAS, rows=run(R, L, acts, "ref"))
-        json.dump(res, open("response.json", "w"), indent=1)
+        json.dump(res, open(RESULTS / "response.json", "w"), indent=1)
     else:
         ars = [float(x) for x in sys.argv[2].split(",")]
         acts = np.r_[3.7e7, np.logspace(8, 14, 13)]
@@ -51,4 +54,4 @@ if __name__ == "__main__":
                                rows=run(R, L, acts, f"L/D={ar}")))
             print(f"== L/D={ar} R={R*100:.2f} cm L={L*100:.2f} cm done in "
                   f"{time.perf_counter()-t0:.0f}s", flush=True)
-            json.dump(allres, open(f"aspect_{sys.argv[3]}.json", "w"), indent=1)
+            json.dump(allres, open(RESULTS / f"aspect_{sys.argv[3]}.json", "w"), indent=1)

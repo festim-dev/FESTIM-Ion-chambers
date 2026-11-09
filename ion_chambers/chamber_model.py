@@ -36,7 +36,7 @@ from dolfinx.fem.petsc import LinearProblem
 from mpi4py import MPI
 from scipy.interpolate import RegularGridInterpolator
 
-import beta_source as bs
+from . import beta_source as bs
 
 E_CHARGE = 1.602176634e-19
 EPS0 = 8.8541878128e-12

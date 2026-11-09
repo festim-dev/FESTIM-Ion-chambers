@@ -23,7 +23,6 @@ def run(R, L, activities, tag):
             o = ch.solve(A); rows[n].append(o)
             print(f"[{tag}] N_r={n} A={A:.2e} I/Iid={o['I']/o['I_ideal']:.4f} "
                   f"coll={o['collection_eff']:.4f} sc={o['space_charge']:.3g}", flush=True)
-        wall = ch.f_grid
         del ch; gc.collect()
     out = []
     for c, f in zip(rows[NR[0]], rows[NR[1]]):

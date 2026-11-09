@@ -18,11 +18,16 @@ Species (number densities, m^-3):
 Transport: J = -D grad(c) + c v with v = -z mu grad(phi), through
 festim.ElectromigrationTerm. The field is the fixed Laplace field (no space charge).
 
-Numerics: FESTIM does not stabilise drift-dominated transport, so each species gets a
-diffusion floor D_num = mu V / (2 N_r) (cell Peclet = 1 on the log-graded mesh, where
-|v| h_r = mu V / N_r everywhere) and its charge number is rescaled to z D_phys / D_num
-so the drift velocity stays exactly -z mu grad(phi). Mesh convergence of the reading
-is checked by refining N_r.
+Numerics: FESTIM does not stabilise drift-dominated transport (ion cell Peclet numbers
+reach ~100), so each species gets a cell-local diffusion floor
+D = max(D_phys, mu |E| h_E / 2), stored as a DG0 field (CellwiseDiffusionMaterial),
+with h_E the cell length along the field. The floor vanishes where the field is weak,
+so it cannot fake losses in low-field corners. The drift velocity is kept at exactly
+-z mu grad(phi) by MobilityElectromigration, which uses the mobility instead of the
+Einstein relation with the (floored) D. The remaining error is first order in h; the
+sweep scripts Richardson-extrapolate the current from N_r = 150 and 300.
+
+Quick check:  python -m ion_chambers.chamber_model
 """
 
 import time
@@ -87,7 +92,7 @@ class CellwiseDiffusionMaterial(F.Material):
 
 def cell_velocity_length(m, phi):
     """|E| at cell centroids and the cell length along E (SUPG-style h)."""
-    P = m.geometry.x[:, :2][m.geometry.dofmap]  # (ncells, 3, 2)
+    P = m.geometry.x[:, :2][m.geometry.dofmaps[0]]  # (ncells, 3, 2)
     cen = P.mean(axis=1)
     pts = np.c_[cen, np.zeros(len(cen))]
     cells = np.arange(len(cen), dtype=np.int32)
@@ -108,7 +113,7 @@ def lumped_projection(m, V1, func, k=6):
     Conserves int f r dx exactly, so a wall layer thinner than the cells is not smeared
     into extra loss the way nodal interpolation would.
     """
-    P = m.geometry.x[:, :2][m.geometry.dofmap]  # (nc, 3, 2)
+    P = m.geometry.x[:, :2][m.geometry.dofmaps[0]]  # (nc, 3, 2)
     dofs = V1.dofmap.list  # same local vertex order as the P1 geometry
     lam = []
     for i in range(k):
@@ -460,12 +465,15 @@ def _asm(form):
     return MPI.COMM_WORLD.allreduce(fem.assemble_scalar(fem.form(form)), op=MPI.SUM)
 
 
-if __name__ == "__main__" and False:
+if __name__ == "__main__":
+    # reference 1 L chamber on a coarse mesh: a quick end-to-end check
     a, Vol = 1.5e-3, 1e-3
     R = 0.05
     L = Vol / (np.pi * (R**2 - a**2))
     ch = Chamber(a, R, L, V=500.0, N_r=100)
-    print(f"setup {ch.t_setup:.1f}s  N_z={ch.N_z}  D={ch.D}  z_eff={ch.z_eff}")
+    print(f"setup {ch.t_setup:.1f}s  N_r={ch.N_r}  N_z={ch.N_z}")
+    for k, (lo, med, hi) in ch.D_stats.items():
+        print(f"  D_{k}: min {lo:.3g}  median {med:.3g}  max {hi:.3g} m2/s")
     for A in [3.7e4, 3.7e10, 3.7e13]:
         t0 = time.perf_counter()
         out = ch.solve(A)

@@ -265,9 +265,9 @@ class Chamber:
         Emag, h_v = cell_velocity_length(m, self.phi)
         V0 = fem.functionspace(m, ("DG", 0))
         self.D, self.D_stats = {}, {}
-        for k in D_phys:
+        for k, value in D_phys.items():
             Dk = fem.Function(V0, name=f"D_{k}")
-            vals = np.maximum(D_phys[k], self.floor_factor * 0.5 * mu[k] * Emag * h_v)
+            vals = np.maximum(value, self.floor_factor * 0.5 * mu[k] * Emag * h_v)
             Dk.x.array[:] = vals
             self.D[k] = Dk
             self.D_stats[k] = (vals.min(), np.median(vals), vals.max())
@@ -439,26 +439,26 @@ class Chamber:
         sc_field = np.sqrt(e1 / e0)
         sc_pot = np.max(np.abs(phi1.x.array)) / self.V
         rho_max = np.max(np.abs(c["P"].x.array - c["N"].x.array - c["e"].x.array))
-        return dict(
-            activity=activity,
-            I=I_ramo,
-            I_anode=I_an,
-            I_cathode=I_ca,
-            I_balance=I_vol,
-            I_ideal=I_ideal,
-            generation=G,
-            recombination=Rec,
-            wall_eff=G * E_CHARGE / I_ideal if I_ideal > 0 else np.nan,
-            collection_eff=(G - Rec) / G if G > 0 else np.nan,
+        return {
+            "activity": activity,
+            "I": I_ramo,
+            "I_anode": I_an,
+            "I_cathode": I_ca,
+            "I_balance": I_vol,
+            "I_ideal": I_ideal,
+            "generation": G,
+            "recombination": Rec,
+            "wall_eff": G * E_CHARGE / I_ideal if I_ideal > 0 else np.nan,
+            "collection_eff": (G - Rec) / G if G > 0 else np.nan,
             # space-charge field relative to the applied one
-            space_charge=sc_field,
-            space_charge_pot=sc_pot,
-            space_charge_crude=E_CHARGE
+            "space_charge": sc_field,
+            "space_charge_pot": sc_pot,
+            "space_charge_crude": E_CHARGE
             * rho_max
             * (self.R - self.a) ** 2
             / (EPS0 * self.V),
-            n_mean=rho,
-        )
+            "n_mean": rho,
+        }
 
 
 def _asm(form):

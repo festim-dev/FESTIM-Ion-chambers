@@ -129,9 +129,11 @@ def volume_efficiency(a, R, L, n_pts=20000, n_rays=1500, seed=3):
 if __name__ == "__main__":
     print(f"mean beta energy {mean_energy():.0f} eV")
     print(f"ion pairs / decay {ion_pairs_per_decay():.1f}")
-    print(f"max range {range_air_m(Q_BETA)*1e3:.2f} mm, "
-          f"range at mean {range_air_m(mean_energy())*1e3:.2f} mm")
+    print(
+        f"max range {range_air_m(Q_BETA) * 1e3:.2f} mm, "
+        f"range at mean {range_air_m(mean_energy()) * 1e3:.2f} mm"
+    )
     # planar-wall check: f vs distance from a flat wall (huge chamber)
     for d in [0, 0.2e-3, 0.5e-3, 1e-3, 2e-3, 5e-3]:
         f = wall_efficiency(np.array([0.5]), np.array([d]), 1e-3, 1.0, 2.0, 20000)
-        print(f"d = {d*1e3:4.1f} mm  f = {f[0]:.3f}")
+        print(f"d = {d * 1e3:4.1f} mm  f = {f[0]:.3f}")

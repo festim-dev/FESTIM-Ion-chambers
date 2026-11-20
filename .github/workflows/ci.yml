@@ -71,6 +71,11 @@ jobs:
         shell: bash -l {0}
         run: python -c "import festim, dolfinx; print('FESTIM', festim.__version__, '| DOLFINx', dolfinx.__version__)"
 
+      - name: MPI smoke test
+        shell: bash -l {0}
+        # outside pytest, so that an MPI error message is not swallowed by its capture
+        run: python -c "from mpi4py import MPI; from dolfinx import mesh; mesh.create_unit_square(MPI.COMM_WORLD, 2, 2); print('mesh created')"
+
       - name: Test
         shell: bash -l {0}
         run: python -m pytest

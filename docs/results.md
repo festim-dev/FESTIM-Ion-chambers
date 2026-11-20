@@ -17,7 +17,7 @@ mesh, and the test suite checks this.
 
 A 1 L coaxial chamber in room air: rod radius 1.5 mm, can radius 5.0 cm, length
 12.7 cm (length/diameter 1.27), 3 mm insulating rings, anode at +500 V.
-`ic.library.reference_chamber()` and `ic.library.air()` reproduce it.
+Both are defined in [Example: air and the reference chamber](example_air.md).
 
 ## Response to tritium concentration
 

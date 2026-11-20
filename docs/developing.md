@@ -5,7 +5,7 @@
 ```
 src/ion_chambers/    the package
 tests/               unit and integration tests
-scripts/             parameter studies (write JSON to results/, not tracked)
+scripts/             parameter studies, and the example air and chamber they use
 data/experimental/   digitised measurements
 docs/                this documentation
 ```
@@ -16,7 +16,6 @@ Inside the package, each module holds one kind of object:
 |---|---|
 | `geometry.py` | `Geometry`, `CoaxialChamber` |
 | `gas.py` | `Gas`, `ChargeCarrier`, `Reaction` |
-| `library.py` | example gases and chambers |
 | `beta.py`, `wall_loss.py` | beta spectrum, range, wall-loss Monte Carlo |
 | `source.py` | `IonisationSource`, `TritiumInGas` |
 | `field.py` | potential solvers |

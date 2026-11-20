@@ -36,8 +36,8 @@ chamber = ic.CoaxialChamber.from_aspect_ratio(
 )
 ```
 
-`ic.library.reference_chamber()` returns the 1 L chamber used for the
-[prototype results](../results.md).
+The 1 L chamber used for the [prototype results](../results.md) is defined in
+[Example: air and the reference chamber](../example_air.md).
 
 ### Mesh
 

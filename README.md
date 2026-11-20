@@ -30,9 +30,25 @@ python scripts/quick_check.py
 ```python
 import ion_chambers as ic
 
+electrons = ic.ChargeCarrier(name="e", charge=-1, mobility=0.04, diffusivity=0.04)
+positive_ions = ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4)
+negative_ions = ic.ChargeCarrier(name="N", charge=-1, mobility=2.2e-4)
+
+air = ic.Gas(
+    name="air",
+    w_value=33.97,  # eV per ion pair
+    density=1.205,  # kg/m3
+    carriers=[electrons, positive_ions, negative_ions],
+    reactions=[
+        ic.Reaction(reactants=["e"], products=["N"], rate=1.0e8),  # attachment
+        ic.Reaction(reactants=["P", "N"], rate=2.0e-12),  # recombination
+        ic.Reaction(reactants=["P", "e"], rate=2.0e-13),  # recombination
+    ],
+)
+
 model = ic.IonChamberModel(
     geometry=ic.CoaxialChamber(rod_radius=1.5e-3, can_radius=0.05, length=0.127),
-    gas=ic.library.air(),
+    gas=air,
     sources=ic.TritiumInGas(activity=3.7e10),  # Bq/m3
     bias=500.0,  # V
 )
@@ -41,9 +57,10 @@ reading = model.run()
 print(reading.current, reading.collection_efficiency)
 ```
 
-A model is composed of a geometry, a gas (charge carriers and reactions that you can
-define yourself), one or more ionisation sources, a potential solver and a bias. The
-documentation explains each part.
+A model is composed of a geometry, a gas, one or more ionisation sources, a potential
+solver and a bias. The package ships no gas data: you define the charge carriers and
+their reactions, as above. `scripts/reference_case.py` is a fuller air example that
+follows the pressure. The documentation explains each part.
 
 ## Documentation
 
@@ -82,9 +99,9 @@ cells.
 - **Geometry:** the model uses a thin 1.5 mm rod in a 5 cm radius can. The real 1 L
   monitor appears to have a much larger anode, about 2.8 cm diameter and 9 cm long
   (slide 5 of the TFG deck). We need the real drawings.
-- **Carrier gas:** air is the only example gas. Most of the measurements are in N₂ or
-  Ar, where electrons barely attach and stay free. The model accepts such gases, but
-  vetted transport data for them is not in the library yet.
+- **Carrier gas:** the only worked example is air. Most of the measurements are in N₂
+  or Ar, where electrons barely attach and stay free. The model accepts such gases,
+  but we have not yet chosen transport data for them.
 - **20 cc wire cage:** this is a different geometry (an open cage), not yet modelled.
 
 See `docs/roadmap.md` for the plan.

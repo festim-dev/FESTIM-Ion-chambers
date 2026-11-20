@@ -34,12 +34,6 @@ Gas
 
 .. autodata:: ion_chambers.gas.Coefficient
 
-Library of examples
--------------------
-
-.. automodule:: ion_chambers.library
-   :members:
-
 Sources
 -------
 

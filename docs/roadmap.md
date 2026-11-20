@@ -15,7 +15,7 @@ threshold.
 
 ## Next
 
-1. **Carrier gases.** Example data for N₂ and Ar with electron transport that depends
+1. **Carrier gases.** Worked examples for N₂ and Ar with electron transport that depends
    on E/N, and impurities that capture electrons. The model already accepts such
    coefficients; what is missing is vetted data and a choice of source for it.
 2. **Geometry from a mesh file.** A geometry that reads a mesh and its electrode tags

@@ -3,35 +3,20 @@
 The gas is described by what carries charge in it and how those carriers react. All of
 it is input that you control.
 
-## Using the example gas
+The package ships no gas data. Transport and reaction coefficients depend on the gas,
+its purity, the pressure and the field, and a value that looks official is easy to
+trust too much. So the gas is always something you define.
+[Example: air](../example_air.md) is a complete definition to copy and adapt.
 
-```python
-import ion_chambers as ic
-
-gas = ic.library.air()  # 1 atm, 293.15 K
-gas = ic.library.air(pressure=50_000.0)  # Pa
-gas = ic.library.air(temperature=320.0)  # K
-```
-
-{func}`~ion_chambers.library.air` has three carriers (electrons, positive ions and
-O₂⁻ negative ions) and three reactions (attachment of electrons to O₂, ion–ion
-recombination and electron–ion recombination). Its docstring lists every value and how
-each one is scaled with pressure and temperature.
-
-:::{admonition} The library holds examples, not reference data
-:class: warning
-The values in `ion_chambers.library` are reasonable starting points with simple,
-documented scaling rules. Check them against your conditions before relying on a
-result. Air is the only gas provided so far.
-:::
-
-## Defining your own gas
+## Defining a gas
 
 A {class}`~ion_chambers.Gas` is built from {class}`~ion_chambers.ChargeCarrier` and
 {class}`~ion_chambers.Reaction` objects. This example is a gas in which electrons do
 not attach, so there are no negative ions at all:
 
 ```python
+import ion_chambers as ic
+
 gas = ic.Gas(
     name="my gas",
     w_value=26.4,  # eV per ion pair
@@ -66,9 +51,15 @@ Reactions
 Ionisation products
 : The two carriers that each ionisation creates.
 
+## Pressure and temperature
+
 The coefficients you give are used as they are. `Gas` does not rescale them with
-`pressure` or `temperature`; those two set the number density (for E/N) and the
+`pressure` or `temperature`. Those two only set the number density (for E/N) and the
 thermal voltage (for the Einstein relation).
+
+To study a range of pressures, write a function that takes the pressure and returns a
+`Gas` with the coefficients scaled the way you judge right for your gas.
+[Example: air](../example_air.md) does exactly that.
 
 ## Coefficients that depend on the field
 

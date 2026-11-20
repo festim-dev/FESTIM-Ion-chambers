@@ -6,8 +6,53 @@ build-backend = "setuptools.build_meta"
 name = "ion_chambers"
 version = "0.1.0"
 description = "FESTIM model of a tritium ionisation chamber"
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.12"
-# festim, dolfinx and friends come from conda-forge: see environment.yml
+# festim (2.2) and dolfinx (0.11) come from conda-forge: see environment.yml
+dependencies = ["numpy>=2", "scipy"]
 
-[tool.setuptools]
-packages = ["ion_chambers"]
+[project.optional-dependencies]
+test = ["pytest"]
+lint = ["ruff"]
+docs = ["sphinx", "furo", "myst-parser"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: solves a full model (seconds)"]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "W",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "RUF", # Ruff-specific rules
+    "UP",  # pyupgrade
+    "ICN", # flake8-import-conventions
+    "NPY", # numpy-specific rules
+    "FLY", # use f-string not static joins
+]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ion_chambers"]
+section-order = [
+    "future",
+    "standard-library",
+    "mpi",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.lint.isort.sections]
+mpi = ["mpi4py", "petsc4py"]

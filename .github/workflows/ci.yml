@@ -36,6 +36,7 @@ jobs:
     # runners. Restricting UCX to TCP/shared-memory/self skips the probe.
     env:
       UCX_TLS: tcp,self,sm
+      PYTHONFAULTHANDLER: "1" # print a traceback if a test crashes the interpreter
 
     strategy:
       fail-fast: false

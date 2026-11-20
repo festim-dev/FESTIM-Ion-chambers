@@ -224,3 +224,7 @@ __marimo__/
 
 # Sweep outputs
 results/
+
+# Claude Code files (kept local for now)
+CLAUDE.md
+.claude/

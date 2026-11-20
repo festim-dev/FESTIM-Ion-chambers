@@ -32,8 +32,9 @@ jobs:
     # FESTIM main is a moving target: report its failures without blocking a PR
     continue-on-error: ${{ matrix.festim == 'main' }}
 
-    # conda-forge's MPICH probes RDMA devices during MPI_Init, which aborts on some
-    # runners. Restricting UCX to TCP/shared-memory/self skips the probe.
+    # MPICH is installed on purpose: with conda-forge's Open MPI, creating a mesh
+    # aborts with MPI_ERR_OTHER on some runners. MPICH in turn probes RDMA devices
+    # during MPI_Init, which UCX_TLS restricts to TCP/shared-memory/self.
     env:
       UCX_TLS: tcp,self,sm
       PYTHONFAULTHANDLER: "1" # print a traceback if a test crashes the interpreter
@@ -56,7 +57,7 @@ jobs:
 
       - name: Create the environment
         shell: bash -l {0}
-        run: conda install python=3.12 festim=2.2 fenics-dolfinx=0.11 "numpy>=2" scipy pytest
+        run: conda install python=3.12 festim=2.2 fenics-dolfinx=0.11 mpich "numpy>=2" scipy pytest
 
       - name: Replace FESTIM with its main branch
         if: matrix.festim == 'main'

@@ -17,9 +17,3 @@ BQ_PER_CI = 3.7e10
 
 TOWNSEND = 1e-21
 """One townsend, the unit of reduced electric field E/N (V m2)."""
-
-STANDARD_PRESSURE = 101325.0
-"""Reference pressure of the gas library (Pa)."""
-
-ROOM_TEMPERATURE = 293.15
-"""Reference temperature of the gas library (K)."""

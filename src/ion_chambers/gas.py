@@ -4,7 +4,8 @@ Everything here is plain user input. A :class:`Gas` holds numbers (or callables 
 reduced electric field); no DOLFINx object is created until
 :meth:`ion_chambers.IonChamberModel.initialise`.
 
-Ready-made examples live in :mod:`ion_chambers.library`.
+The package ships no gas data: the coefficients are yours to supply. The
+documentation shows a complete example for air.
 """
 
 from collections.abc import Callable
@@ -103,8 +104,8 @@ class Gas:
     """The gas filling the chamber, at a given pressure and temperature.
 
     All coefficients are the values *at this pressure and temperature*: the class does
-    not rescale them. The functions in :mod:`ion_chambers.library` show how to build a
-    gas whose coefficients follow the pressure.
+    not rescale them. The air example in the documentation shows how to write a
+    function that builds a gas whose coefficients follow the pressure.
 
     Args:
         name: the name of the gas

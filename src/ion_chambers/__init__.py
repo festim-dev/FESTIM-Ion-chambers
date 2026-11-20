@@ -6,7 +6,7 @@ from ion_chambers._festim_check import check_festim as _check_festim
 
 _check_festim(_festim)
 
-from ion_chambers import beta, constants, library, wall_loss
+from ion_chambers import beta, constants, wall_loss
 from ion_chambers.cellwise_diffusion_material import CellwiseDiffusionMaterial
 from ion_chambers.field import LaplaceField, PotentialSolver, SpaceChargePerturbation
 from ion_chambers.gas import ChargeCarrier, Gas, Reaction
@@ -36,7 +36,6 @@ __all__ = [
     "TritiumInGas",
     "beta",
     "constants",
-    "library",
     "response_curve",
     "richardson",
     "save_json",

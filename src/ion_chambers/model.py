@@ -74,11 +74,22 @@ class IonChamberModel:
 
             import ion_chambers as ic
 
+            electrons = ic.ChargeCarrier(
+                name="e", charge=-1, mobility=0.04, diffusivity=0.04
+            )
+            positive_ions = ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4)
+            gas = ic.Gas(
+                name="example gas",
+                w_value=33.97,
+                density=1.205,
+                carriers=[electrons, positive_ions],
+            )
+
             model = ic.IonChamberModel(
                 geometry=ic.CoaxialChamber.from_volume(
                     volume=1e-3, rod_radius=1.5e-3, can_radius=0.05
                 ),
-                gas=ic.library.air(),
+                gas=gas,
                 sources=ic.TritiumInGas(activity=3.7e10),
                 bias=500.0,
             )

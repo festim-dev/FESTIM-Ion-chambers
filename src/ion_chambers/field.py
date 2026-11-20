@@ -4,6 +4,8 @@ The transport model takes the potential as a given field. Which equation that fi
 solves is a choice, made by passing a :class:`PotentialSolver` to the model.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import ufl

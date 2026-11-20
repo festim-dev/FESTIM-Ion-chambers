@@ -1,5 +1,7 @@
 """Stabilisation of drift-dominated transport."""
 
+from __future__ import annotations
+
 import numpy as np
 import ufl
 from dolfinx import fem

@@ -6,6 +6,8 @@ rest of the package only talks to a geometry through :class:`Geometry`, so a new
 is a new subclass.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
@@ -131,7 +133,7 @@ class CoaxialChamber(Geometry):
     @classmethod
     def from_volume(
         cls, volume: float, rod_radius: float, can_radius: float, **kwargs
-    ) -> "CoaxialChamber":
+    ) -> CoaxialChamber:
         """A chamber of given gas volume and radii; the length follows.
 
         Args:
@@ -146,7 +148,7 @@ class CoaxialChamber(Geometry):
     @classmethod
     def from_aspect_ratio(
         cls, volume: float, rod_radius: float, aspect_ratio: float, **kwargs
-    ) -> "CoaxialChamber":
+    ) -> CoaxialChamber:
         """A chamber of given gas volume and length-to-diameter ratio.
 
         Args:

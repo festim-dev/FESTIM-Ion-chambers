@@ -1,5 +1,7 @@
 """Electromigration with the drift set by a mobility."""
 
+from __future__ import annotations
+
 import festim as F
 import ufl
 from dolfinx import fem

@@ -1,5 +1,7 @@
 """Integration helpers that hide the coordinate system and the MPI reduction."""
 
+from __future__ import annotations
+
 from mpi4py import MPI
 
 import numpy as np

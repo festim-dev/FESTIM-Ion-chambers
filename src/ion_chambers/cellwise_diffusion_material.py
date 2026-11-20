@@ -1,5 +1,7 @@
 """A material with one diffusivity field per species."""
 
+from __future__ import annotations
+
 import festim as F
 from dolfinx import fem
 

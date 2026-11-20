@@ -1,5 +1,7 @@
 """The ion chamber model: charge carriers drifting to the electrodes."""
 
+from __future__ import annotations
+
 import festim as F
 import numpy as np
 from dolfinx import fem

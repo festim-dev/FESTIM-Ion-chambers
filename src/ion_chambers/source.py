@@ -1,5 +1,7 @@
 """Ionisation sources: where and how fast ion pairs are created."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import numpy as np

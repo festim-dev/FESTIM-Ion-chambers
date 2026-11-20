@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays: catches changes on FESTIM main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.17.6
+      - name: Format
+        run: ruff format --check src tests scripts docs
+      - name: Lint
+        run: ruff check src tests scripts
+
+  test:
+    name: test (FESTIM ${{ matrix.festim }})
+    runs-on: ubuntu-latest
+    # FESTIM main is a moving target: report its failures without blocking a PR
+    continue-on-error: ${{ matrix.festim == 'main' }}
+
+    # conda-forge's MPICH probes RDMA devices during MPI_Init, which aborts on some
+    # runners. Restricting UCX to TCP/shared-memory/self skips the probe.
+    env:
+      UCX_TLS: tcp,self,sm
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # FESTIM 2.1 and older cannot run this package: the drift terms, OutflowBC
+        # and GenericReaction it builds on first appeared in 2.2.
+        festim: ["2.2", "main"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: ion-chambers
+          miniforge-version: latest
+          channels: conda-forge
+
+      - name: Create the environment
+        shell: bash -l {0}
+        run: conda install python=3.12 festim=2.2 fenics-dolfinx=0.11 "numpy>=2" scipy pytest
+
+      - name: Replace FESTIM with its main branch
+        if: matrix.festim == 'main'
+        shell: bash -l {0}
+        run: pip install --no-deps --force-reinstall git+https://github.com/festim-dev/FESTIM@main
+
+      - name: Install the package
+        shell: bash -l {0}
+        run: pip install --no-deps -e .
+
+      - name: Versions
+        shell: bash -l {0}
+        run: python -c "import festim, dolfinx; print('FESTIM', festim.__version__, '| DOLFINx', dolfinx.__version__)"
+
+      - name: Test
+        shell: bash -l {0}
+        run: python -m pytest

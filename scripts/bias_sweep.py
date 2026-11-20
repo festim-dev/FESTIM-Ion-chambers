@@ -1,47 +1,43 @@
-"""Saturation curve: chamber current vs bias for the reference 1 L chamber."""
+"""Saturation curve: chamber current against bias, reference 1 L chamber.
 
-import functools
-import json
-import sys
+python scripts/bias_sweep.py 250 500 1000
+python scripts/bias_sweep.py 500 --output results/bias_test.json
+"""
+
+import argparse
 import time
 
-import numpy as np
+import ion_chambers as ic
+from ion_chambers.constants import BQ_PER_CI
 
-from ion_chambers import beta_source as bs
+ACTIVITIES = [1 * BQ_PER_CI, 10 * BQ_PER_CI, 100 * BQ_PER_CI]  # Bq/m3
 
-bs.efficiency_grid = functools.lru_cache(maxsize=4)(
-    bs.efficiency_grid
-)  # same geometry every time
-from sweeps import A_ROD, RESULTS, VOL
 
-from ion_chambers.chamber_model import Chamber
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("biases", type=float, nargs="+", help="anode bias (V)")
+    parser.add_argument("--output", default="results/bias.json")
+    args = parser.parse_args()
 
-R = 0.05
-L = VOL / (np.pi * (R**2 - A_ROD**2))
-CI = 3.7e10
-ACTS = [1 * CI, 10 * CI, 100 * CI]
-volts = [float(v) for v in sys.argv[1].split(",")]
-RESULTS.mkdir(exist_ok=True)
-out = []
-for V in volts:
-    t0 = time.perf_counter()
-    rec = {"V": V, "rows": {}}
-    for n in (150, 300):
-        ch = Chamber(A_ROD, R, L, V=V, N_r=n)
-        for A in ACTS:
-            o = ch.solve(A)
-            rec["rows"].setdefault(f"{A:.3e}", {})[n] = o
-        del ch
-    for d in rec["rows"].values():
-        d["I_extrap"] = 2 * d[300]["I"] - d[150]["I"]
-    print(
-        f"V={V:g}: "
-        + " ".join(
-            f"{k}:{d['I_extrap'] / d[300]['I_ideal']:.4f}(sc {d[300]['space_charge']:.3f})"
-            for k, d in rec["rows"].items()
-        )
-        + f"  {time.perf_counter() - t0:.0f}s",
-        flush=True,
-    )
-    out.append(rec)
-    json.dump(out, open(RESULTS / f"bias_{sys.argv[2]}.json", "w"), default=float)
+    geometry = ic.library.reference_chamber()
+    results = []
+    for bias in args.biases:
+
+        def build_model(resolution: int, bias=bias) -> ic.IonChamberModel:
+            return ic.IonChamberModel(
+                geometry=geometry,
+                gas=ic.library.air(),
+                sources=ic.TritiumInGas(activity=0.0),
+                bias=bias,
+                resolution=resolution,
+            )
+
+        start = time.perf_counter()
+        rows = ic.response_curve(build_model, ACTIVITIES, label=f"{bias:g} V")
+        results.append({"bias": bias, "rows": rows})
+        print(f"== {bias:g} V done in {time.perf_counter() - start:.0f} s", flush=True)
+        ic.save_json(results, args.output)  # keep what is done if a later case fails
+
+
+if __name__ == "__main__":
+    main()

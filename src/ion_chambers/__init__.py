@@ -1,5 +1,11 @@
 """FESTIM model of a tritium ionisation chamber (process monitor)."""
 
+import festim as _festim
+
+from ion_chambers._festim_check import check_festim as _check_festim
+
+_check_festim(_festim)
+
 from ion_chambers import beta, constants, library, wall_loss
 from ion_chambers.cellwise_diffusion_material import CellwiseDiffusionMaterial
 from ion_chambers.field import LaplaceField, PotentialSolver, SpaceChargePerturbation

@@ -9,8 +9,9 @@ description = "FESTIM model of a tritium ionisation chamber"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12"
-# festim (2.2) and dolfinx (0.11) come from conda-forge: see environment.yml
-dependencies = ["numpy>=2", "scipy"]
+# Install FESTIM and DOLFINx with conda first (see environment.yml): pip cannot
+# install DOLFINx. The festim entry only makes pip refuse an older FESTIM.
+dependencies = ["festim>=2.2", "numpy>=2", "scipy"]
 
 [project.optional-dependencies]
 test = ["pytest"]
@@ -56,3 +57,7 @@ section-order = [
 
 [tool.ruff.lint.isort.sections]
 mpi = ["mpi4py", "petsc4py"]
+
+[tool.ruff.lint.per-file-ignores]
+# the FESTIM check has to run before the modules that need FESTIM 2.2 are imported
+"src/ion_chambers/__init__.py" = ["E402"]

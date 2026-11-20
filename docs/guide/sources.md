@@ -34,7 +34,7 @@ Options:
 
 ```python
 ic.TritiumInGas(activity=3.7e10, wall_loss=False)  # every beta stops in the gas
-ic.TritiumInGas(activity=3.7e10, n_rays=10000)     # more betas per point (default 3000)
+ic.TritiumInGas(activity=3.7e10, n_rays=10000)  # more betas per point (default 3000)
 ```
 
 The Monte Carlo is the slowest part of `model.initialise()`. Its result depends only on

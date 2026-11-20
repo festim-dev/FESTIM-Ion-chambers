@@ -8,9 +8,9 @@ it is input that you control.
 ```python
 import ion_chambers as ic
 
-gas = ic.library.air()                       # 1 atm, 293.15 K
-gas = ic.library.air(pressure=50_000.0)      # Pa
-gas = ic.library.air(temperature=320.0)      # K
+gas = ic.library.air()  # 1 atm, 293.15 K
+gas = ic.library.air(pressure=50_000.0)  # Pa
+gas = ic.library.air(temperature=320.0)  # K
 ```
 
 {func}`~ion_chambers.library.air` has three carriers (electrons, positive ions and
@@ -34,9 +34,9 @@ not attach, so there are no negative ions at all:
 ```python
 gas = ic.Gas(
     name="my gas",
-    w_value=26.4,        # eV per ion pair
-    density=1.66,        # kg/m3, sets the range of the betas
-    pressure=101325.0,   # Pa
+    w_value=26.4,  # eV per ion pair
+    density=1.66,  # kg/m3, sets the range of the betas
+    pressure=101325.0,  # Pa
     temperature=293.15,  # K
     carriers=[
         ic.ChargeCarrier(name="e", charge=-1, mobility=0.3, diffusivity=0.3),
@@ -79,9 +79,11 @@ numpy array and returns the coefficient in SI units:
 ```python
 import numpy as np
 
+
 def electron_mobility(reduced_field):
     """Illustration only: mobility falling with E/N."""
     return 0.3 / (1 + np.sqrt(reduced_field))
+
 
 electron = ic.ChargeCarrier(
     name="e", charge=-1, mobility=electron_mobility, diffusivity=0.3

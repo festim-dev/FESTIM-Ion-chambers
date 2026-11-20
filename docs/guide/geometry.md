@@ -14,9 +14,9 @@ through a cap, an insulating ring separates the two.
 import ion_chambers as ic
 
 chamber = ic.CoaxialChamber(
-    rod_radius=1.5e-3,     # m
-    can_radius=0.05,       # m
-    length=0.127,          # m
+    rod_radius=1.5e-3,  # m
+    can_radius=0.05,  # m
+    length=0.127,  # m
     feedthrough_gap=3e-3,  # m, radial width of the insulating rings
 )
 print(chamber.volume)  # m3

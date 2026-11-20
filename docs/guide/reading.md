@@ -4,8 +4,8 @@
 
 ```python
 reading = model.run()
-reading.current       # A
-reading.as_dict()     # everything, for saving
+reading.current  # A
+reading.as_dict()  # everything, for saving
 ```
 
 ## What the chamber reads

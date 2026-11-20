@@ -23,6 +23,7 @@ given resolution:
 import numpy as np
 import ion_chambers as ic
 
+
 def build_model(resolution):
     return ic.IonChamberModel(
         geometry=ic.library.reference_chamber(),
@@ -31,6 +32,7 @@ def build_model(resolution):
         bias=500.0,
         resolution=resolution,
     )
+
 
 activities = np.logspace(8, 13, 6)  # Bq/m3
 rows = ic.response_curve(build_model, activities, resolutions=(150, 300))
@@ -44,6 +46,7 @@ To study another parameter, loop over it and build a different model in each pas
 
 ```python
 for bias in [250.0, 500.0, 1000.0]:
+
     def build_model(resolution, bias=bias):
         return ic.IonChamberModel(..., bias=bias, resolution=resolution)
 

@@ -1,8 +1,5 @@
 """FESTIM model of a tritium ionisation chamber (process monitor)."""
 
-# mpi4py first: it has to initialise MPI before FESTIM pulls in DOLFINx
-from mpi4py import MPI as _MPI  # noqa: F401
-
 import festim as _festim
 
 from ion_chambers._festim_check import check_festim as _check_festim

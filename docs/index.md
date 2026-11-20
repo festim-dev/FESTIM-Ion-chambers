@@ -20,7 +20,8 @@ with measurements**: the real vessel geometry and the carrier gases of the exper
 
 - Model a closed coaxial chamber in 2D axisymmetry, with any dimensions.
 - Describe the gas as a set of charge carriers and reactions that you define, with
-  coefficients that may depend on the reduced electric field E/N.
+  coefficients that may depend on the reduced electric field E/N. No gas data is
+  built in.
 - Account for the beta energy lost to the walls with a Monte Carlo over the tritium
   spectrum.
 - Predict the chamber current, the collection efficiency and the wall-loss efficiency.
@@ -35,6 +36,7 @@ with measurements**: the real vessel geometry and the carrier gases of the exper
 
 installation
 quickstart
+example_air
 ```
 
 ```{toctree}

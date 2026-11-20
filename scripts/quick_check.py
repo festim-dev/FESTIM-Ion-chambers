@@ -5,13 +5,15 @@ python scripts/quick_check.py
 
 import time
 
+from reference_case import air, reference_chamber
+
 import ion_chambers as ic
 
 
-def main() -> None:
+def main():
     model = ic.IonChamberModel(
-        geometry=ic.library.reference_chamber(),
-        gas=ic.library.air(),
+        geometry=reference_chamber(),
+        gas=air(),
         sources=ic.TritiumInGas(activity=0.0),
         bias=500.0,
         resolution=100,

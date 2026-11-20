@@ -3,6 +3,7 @@ import json
 import numpy as np
 import pytest
 from dolfinx import fem
+from prototype_case import air
 
 import ion_chambers as ic
 
@@ -25,13 +26,13 @@ def test_ideal_pair_rate(chamber):
     per decay."""
     source = ic.TritiumInGas(activity=3.7e10)
     expected = 3.7e10 * 1e-3 * ic.beta.ion_pairs_per_decay(33.97)
-    assert np.isclose(source.ideal_pair_rate(chamber, ic.library.air()), expected)
+    assert np.isclose(source.ideal_pair_rate(chamber, air()), expected)
 
 
 def test_no_wall_loss_gives_unit_efficiency(chamber):
     """With wall losses switched off the efficiency is exactly one everywhere."""
     source = ic.TritiumInGas(activity=1.0, wall_loss=False)
-    source.build(chamber.build_mesh(6), chamber, ic.library.air())
+    source.build(chamber.build_mesh(6), chamber, air())
     assert np.all(source.efficiency.x.array == 1.0)
 
 
@@ -39,7 +40,7 @@ def test_wall_loss_efficiency_stays_between_zero_and_one(chamber):
     """The projected wall-loss efficiency stays within its physical bounds of 0 and
     1."""
     source = ic.TritiumInGas(activity=1.0, n_rays=200)
-    source.build(chamber.build_mesh(6), chamber, ic.library.air())
+    source.build(chamber.build_mesh(6), chamber, air())
     values = source.efficiency.x.array
     assert values.min() >= 0.0 and values.max() <= 1.0
 
@@ -48,7 +49,7 @@ def test_changing_the_activity_updates_the_built_source(chamber):
     """Setting a new activity on a built source updates its rate constant without a
     rebuild."""
     source = ic.TritiumInGas(activity=1.0, wall_loss=False)
-    source.build(chamber.build_mesh(6), chamber, ic.library.air())
+    source.build(chamber.build_mesh(6), chamber, air())
     source.activity = 10.0
     assert np.isclose(source._rate.value, 10.0 * ic.beta.ion_pairs_per_decay(33.97))
 
@@ -57,7 +58,7 @@ def test_built_source_is_a_ufl_expression(chamber):
     """Building a source returns an expression and stores the efficiency as a DOLFINx
     function."""
     source = ic.TritiumInGas(activity=1.0, wall_loss=False)
-    expression = source.build(chamber.build_mesh(6), chamber, ic.library.air())
+    expression = source.build(chamber.build_mesh(6), chamber, air())
     assert isinstance(source.efficiency, fem.Function) and expression is not None
 
 

@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from prototype_case import air, reference_chamber
 
 import ion_chambers as ic
 
@@ -159,11 +160,13 @@ def test_higher_bias_collects_more(coarse_model):
     assert efficiencies[1] > efficiencies[0]
 
 
-def test_lower_pressure_loses_more_to_the_walls(coarse_model):
-    """Air at a fifth of an atmosphere has a lower wall efficiency than air at 1 atm."""
+def test_thinner_gas_loses_more_to_the_walls(coarse_model):
+    """Air at a fifth of its normal density has a lower wall efficiency."""
     efficiencies = []
-    for pressure in (101325.0, 20265.0):
-        coarse_model.gas = ic.library.air(pressure=pressure)
+    for density in (1.205, 0.241):
+        gas = air()
+        gas.density = density
+        coarse_model.gas = gas
         coarse_model.sources = [ic.TritiumInGas(activity=3.7e4, n_rays=300)]
         coarse_model.initialise()
         efficiencies.append(coarse_model.run().wall_efficiency)
@@ -229,12 +232,13 @@ def test_response_curve_extrapolates_from_two_meshes():
 
     def build_model(resolution: int) -> ic.IonChamberModel:
         return ic.IonChamberModel(
-            geometry=ic.library.reference_chamber(),
-            gas=ic.library.air(),
+            geometry=reference_chamber(),
+            gas=air(),
             sources=ic.TritiumInGas(activity=0.0, wall_loss=False),
             resolution=resolution,
         )
 
-    (row,) = ic.response_curve(build_model, [3.7e4], resolutions=(20, 40))
+    rows = ic.response_curve(build_model(20), build_model(40), activities=[3.7e4])
+    row = rows[0]
     expected = 2 * row["current_fine"] - row["current_coarse"]
     assert np.isclose(row["current_extrapolated"], expected)

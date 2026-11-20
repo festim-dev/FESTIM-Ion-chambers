@@ -128,30 +128,3 @@ def test_carrier_lookup_fails_for_unknown_name():
     """Looking up a carrier the gas does not have raises a ValueError."""
     with pytest.raises(ValueError, match="'N' is not one of the carriers"):
         make_gas().carrier("N")
-
-
-def test_air_has_three_carriers():
-    """Library air carries electrons, positive ions and negative ions, in that order."""
-    assert [c.name for c in ic.library.air().carriers] == ["e", "P", "N"]
-
-
-def test_air_density_follows_pressure():
-    """Halving the pressure halves the density of library air."""
-    assert np.isclose(ic.library.air(pressure=50662.5).density, 1.205 / 2)
-
-
-def test_air_ion_mobility_is_inversely_proportional_to_pressure():
-    """Halving the pressure doubles the ion mobility of library air."""
-    low = ic.library.air(pressure=50662.5).carrier("P").mobility
-    assert np.isclose(low, 2 * ic.library.air().carrier("P").mobility)
-
-
-def test_air_attachment_is_three_body():
-    """Halving the pressure divides the attachment frequency of library air by four."""
-    low = ic.library.air(pressure=50662.5).reactions[0].rate
-    assert np.isclose(low, ic.library.air().reactions[0].rate / 4)
-
-
-def test_air_density_follows_temperature():
-    """Doubling the temperature halves the density of library air."""
-    assert np.isclose(ic.library.air(temperature=586.3).density, 1.205 / 2)

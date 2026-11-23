@@ -1,35 +1,67 @@
-"""Quick end-to-end check: reference chamber on a coarse mesh, three activities.
+"""Quick end-to-end check: the reference chamber on a coarse mesh, three activities.
 
-python scripts/quick_check.py
+    python scripts/quick_check.py
+
+This script spells out every step, so it also serves as a first example.
 """
-
-import time
 
 from reference_case import air, reference_chamber
 
 import ion_chambers as ic
 
+BIAS = 500.0  # V, potential of the anode rod
+RESOLUTION = 100  # mesh cells across the electrode gap
+ACTIVITIES = [3.7e4, 3.7e10, 3.7e13]  # Bq/m3
 
-def main():
-    model = ic.IonChamberModel(
-        geometry=reference_chamber(),
-        gas=air(),
-        sources=ic.TritiumInGas(activity=0.0),
-        bias=500.0,
-        resolution=100,
-    )
-    start = time.perf_counter()
-    model.initialise()
-    print(f"setup {time.perf_counter() - start:.1f} s")
+chamber = reference_chamber()
 
-    for activity in [3.7e4, 3.7e10, 3.7e13]:  # Bq/m3
-        model.sources[0].activity = activity
-        start = time.perf_counter()
-        reading = model.run()
-        print(f"\nactivity {activity:.2e} Bq/m3 ({time.perf_counter() - start:.1f} s)")
-        for name, value in reading.as_dict().items():
-            print(f"  {name:26s} {value:.4g}")
+# ---- 1. the electric potential ---------------------------------------------------
 
+electrostatics = ic.ElectrostaticProblem()
+electrostatics.mesh = chamber.create_mesh(resolution=RESOLUTION)
+electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+electrostatics.boundary_conditions = [
+    ic.FixedPotentialBC(subdomain=chamber.anode, value=BIAS),
+    ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+]
+electrostatics.initialise()
+electrostatics.run()
 
-if __name__ == "__main__":
-    main()
+# ---- 2. the transport of the charge carriers ---------------------------------------
+
+tritium = ic.TritiumInGas(activity=0.0, geometry=chamber)
+
+current = ic.ChamberCurrent(surface=chamber.anode)
+anode_current = ic.ElectrodeCurrent(surface=chamber.anode)
+ideal_current = ic.IdealCurrent()
+wall_efficiency = ic.WallEfficiency()
+collection_efficiency = ic.CollectionEfficiency()
+space_charge_field = ic.SpaceChargeField()
+
+transport = ic.ChargeTransportProblem()
+transport.electrostatic_problem = electrostatics
+transport.gas = air()
+transport.ionisation_sources = [tritium]
+transport.exports = [
+    current,
+    anode_current,
+    ideal_current,
+    wall_efficiency,
+    collection_efficiency,
+    space_charge_field,
+]
+transport.initialise()
+
+# ---- 3. solve for each activity ---------------------------------------------------
+
+for activity in ACTIVITIES:
+    tritium.activity = activity
+    transport.run()
+
+    print(f"\nactivity {activity:.2e} Bq/m3")
+    print(f"  chamber current        {current.value:.4e} A")
+    print(f"  current through anode  {anode_current.value:.4e} A")
+    print(f"  ideal current          {ideal_current.value:.4e} A")
+    print(f"  wall efficiency        {wall_efficiency.value:.4f}")
+    print(f"  collection efficiency  {collection_efficiency.value:.4f}")
+    print(f"  space-charge field     {space_charge_field.value:.3g}")

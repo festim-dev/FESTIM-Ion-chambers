@@ -1,12 +1,12 @@
 """The reference case of the prototype study: a 1 L coaxial chamber in room air.
 
-This file is an example of how to define a gas and a chamber. The numbers are
-reasonable starting values, not validated reference data. Copy it and adapt it to
-your own gas and conditions.
+This file is an example of how to define a gas and a chamber and how to set up the
+two problems. The numbers are reasonable starting values, not validated reference
+data. Copy it and adapt it to your own gas and conditions.
 
 The other scripts in this folder import it:
 
-    from reference_case import air, reference_chamber
+    from reference_case import air, build_transport_problem, reference_chamber
 """
 
 import ion_chambers as ic
@@ -99,3 +99,41 @@ def reference_chamber():
     return ic.CoaxialChamber.from_volume(
         volume=1e-3, rod_radius=1.5e-3, can_radius=0.05
     )
+
+
+def build_transport_problem(chamber, bias, resolution):
+    """Solves the potential of a chamber and sets up the transport problem in air.
+
+    Args:
+        chamber: the geometry, an ion_chambers.CoaxialChamber
+        bias: the potential of the anode relative to the cathode (V)
+        resolution: the number of mesh cells across the electrode gap
+
+    Returns:
+        the transport problem, an ion_chambers.ChargeTransportProblem that is ready
+        to be initialised. Its tritium activity is zero: set it before running.
+    """
+    # 1. the electric potential
+    electrostatics = ic.ElectrostaticProblem()
+    electrostatics.mesh = chamber.create_mesh(resolution=resolution)
+    electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+    electrostatics.boundary_conditions = [
+        ic.FixedPotentialBC(subdomain=chamber.anode, value=bias),
+        ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+    ]
+    electrostatics.initialise()
+    electrostatics.run()
+
+    # 2. the transport of the charge carriers in that potential
+    transport = ic.ChargeTransportProblem()
+    transport.electrostatic_problem = electrostatics
+    transport.gas = air()
+    transport.ionisation_sources = [ic.TritiumInGas(activity=0.0, geometry=chamber)]
+    transport.exports = [
+        ic.ChamberCurrent(surface=chamber.anode),
+        ic.IdealCurrent(),
+        ic.WallEfficiency(),
+        ic.CollectionEfficiency(),
+        ic.SpaceChargeField(),
+    ]
+    return transport

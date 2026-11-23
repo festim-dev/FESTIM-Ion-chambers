@@ -1,72 +1,58 @@
 """Shape study: response curves of 1 L chambers with different length/diameter.
 
-python scripts/aspect_ratio_sweep.py 0.4 1.27 7
-python scripts/aspect_ratio_sweep.py 1.27 --output results/aspect_test.json
+    python scripts/aspect_ratio_sweep.py
+
+Edit the parameters below to change the case.
 """
 
-import argparse
-import time
-
 import numpy as np
-from reference_case import air
+from reference_case import build_transport_problem
 
 import ion_chambers as ic
 
-ROD_RADIUS = 1.5e-3  # m
+ASPECT_RATIOS = [0.4, 1.27, 7.0]  # length / diameter of the can
 VOLUME = 1e-3  # m3
+ROD_RADIUS = 1.5e-3  # m
+BIAS = 500.0  # V, potential of the anode rod
+COARSE_RESOLUTION = 150  # mesh cells across the electrode gap
+FINE_RESOLUTION = 300
+OUTPUT_FILE = "results/aspect_ratio.json"
 
+# activity concentrations (Bq/m3): 1 mCi/m3, then 1e8 to 1e14
+activities = np.concatenate([[3.7e7], np.logspace(8, 14, 13)])
 
-def build_model(geometry, bias, resolution):
-    """A chamber in air, on a mesh with the given resolution."""
-    return ic.IonChamberModel(
-        geometry=geometry,
-        gas=air(),
-        sources=ic.TritiumInGas(activity=0.0),
-        bias=bias,
-        resolution=resolution,
+results = []
+for aspect_ratio in ASPECT_RATIOS:
+    chamber = ic.CoaxialChamber.from_aspect_ratio(
+        volume=VOLUME, rod_radius=ROD_RADIUS, aspect_ratio=aspect_ratio
+    )
+    print(
+        f"L/D = {aspect_ratio}: can radius {chamber.can_radius * 100:.2f} cm, "
+        f"length {chamber.length * 100:.2f} cm"
     )
 
+    coarse_problem = build_transport_problem(chamber, BIAS, COARSE_RESOLUTION)
+    fine_problem = build_transport_problem(chamber, BIAS, FINE_RESOLUTION)
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("aspect_ratios", type=float, nargs="+", help="length/diameter")
-    parser.add_argument("--bias", type=float, default=500.0, help="anode bias (V)")
-    parser.add_argument("--output", default="results/aspect_ratio.json")
-    args = parser.parse_args()
+    rows = ic.response_curve(
+        coarse_problem=coarse_problem,
+        fine_problem=fine_problem,
+        activities=activities,
+        cell_size_ratio=FINE_RESOLUTION / COARSE_RESOLUTION,
+        label=f"L/D={aspect_ratio}",
+    )
+    results.append(
+        {
+            "aspect_ratio": aspect_ratio,
+            "rod_radius": chamber.rod_radius,
+            "can_radius": chamber.can_radius,
+            "length": chamber.length,
+            "bias": BIAS,
+            "rows": rows,
+        }
+    )
 
-    activities = np.r_[3.7e7, np.logspace(8, 14, 13)]  # Bq/m3
+    # saved after every shape, so a failure later on does not lose the work done
+    ic.save_json(results, OUTPUT_FILE)
 
-    results = []
-    for aspect_ratio in args.aspect_ratios:
-        start = time.perf_counter()
-        geometry = ic.CoaxialChamber.from_aspect_ratio(
-            volume=VOLUME, rod_radius=ROD_RADIUS, aspect_ratio=aspect_ratio
-        )
-        rows = ic.response_curve(
-            coarse_model=build_model(geometry, args.bias, resolution=150),
-            fine_model=build_model(geometry, args.bias, resolution=300),
-            activities=activities,
-            label=f"L/D={aspect_ratio}",
-        )
-        results.append(
-            {
-                "aspect_ratio": aspect_ratio,
-                "rod_radius": geometry.rod_radius,
-                "can_radius": geometry.can_radius,
-                "length": geometry.length,
-                "bias": args.bias,
-                "rows": rows,
-            }
-        )
-        elapsed = time.perf_counter() - start
-        print(
-            f"== L/D={aspect_ratio}: R={geometry.can_radius * 100:.2f} cm, "
-            f"L={geometry.length * 100:.2f} cm, {elapsed:.0f} s",
-            flush=True,
-        )
-        # saved after every case, so a failure later on does not lose the work done
-        ic.save_json(results, args.output)
-
-
-if __name__ == "__main__":
-    main()
+print(f"saved {OUTPUT_FILE}")

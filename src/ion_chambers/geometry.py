@@ -1,18 +1,17 @@
 """Chamber geometries.
 
-A geometry knows four things: how to mesh the gas volume, where the electrodes are,
-how large the gas volume is, and how far a beta travels before it hits a wall. The
-rest of the package only talks to a geometry through :class:`Geometry`, so a new shape
-is a new subclass.
+A geometry provides the mesh of the gas volume, the two electrode surfaces, and the
+distance a beta can travel before it hits a wall. A new shape is a new subclass of
+:class:`Geometry`.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 
 from mpi4py import MPI
 
+import festim as F
 import numpy as np
 from dolfinx import mesh as dmesh
 from scipy.optimize import brentq
@@ -22,40 +21,25 @@ class Geometry(ABC):
     """Base class of the chamber geometries.
 
     Attributes:
-        coordinate_system: ``"cylindrical"`` for an axisymmetric (r, z) mesh or
-            ``"cartesian"``
+        gas: the gas volume, a :class:`festim.VolumeSubdomain` covering the whole mesh
+        anode: the surface of the anode, a :class:`festim.SurfaceSubdomain`
+        cathode: the surface of the cathode, a :class:`festim.SurfaceSubdomain`
+        dimensions: the numbers that define the shape, as a tuple. Two geometries with
+            the same dimensions share the cached wall-loss calculation.
     """
 
-    coordinate_system: str = "cylindrical"
+    gas: F.VolumeSubdomain
+    anode: F.SurfaceSubdomain
+    cathode: F.SurfaceSubdomain
+    dimensions: tuple
 
     @abstractmethod
-    def build_mesh(self, resolution: int) -> dmesh.Mesh:
+    def create_mesh(self, resolution: int) -> F.Mesh:
         """Creates the mesh of the gas volume.
 
         Args:
             resolution: the number of cells across the electrode gap
         """
-
-    @abstractmethod
-    def is_anode(self, x: np.ndarray) -> np.ndarray:
-        """Marks the points on the anode, the electrode held at the bias.
-
-        Args:
-            x: the coordinates, one column per point (the DOLFINx locator convention)
-        """
-
-    @abstractmethod
-    def is_cathode(self, x: np.ndarray) -> np.ndarray:
-        """Marks the points on the cathode, the grounded electrode.
-
-        Args:
-            x: the coordinates, one column per point (the DOLFINx locator convention)
-        """
-
-    @property
-    @abstractmethod
-    def volume(self) -> float:
-        """The gas volume (m3)."""
 
     @abstractmethod
     def distance_to_wall(self, points: np.ndarray, directions: np.ndarray):
@@ -78,7 +62,6 @@ class Geometry(ABC):
         """
 
 
-@dataclass(frozen=True)
 class CoaxialChamber(Geometry):
     """An anode rod on the axis of a closed cylindrical can.
 
@@ -95,6 +78,8 @@ class CoaxialChamber(Geometry):
             z = 0       +--+=====================+
                      r = rod_radius          r = can_radius
 
+    The model is axisymmetric: the mesh covers the (r, z) half section of the gas.
+
     Args:
         rod_radius: the radius of the anode rod (m)
         can_radius: the inner radius of the can (m)
@@ -104,31 +89,60 @@ class CoaxialChamber(Geometry):
             radial resolution.
         cap_refinement: how strongly the mesh is refined towards the end caps (0 for a
             uniform mesh)
+
+    Attributes:
+        rod_radius: the radius of the anode rod (m)
+        can_radius: the inner radius of the can (m)
+        length: the inner length of the can (m)
+        feedthrough_gap: the radial width of the insulating rings (m)
+        gas: the gas volume, a :class:`festim.VolumeSubdomain` with id 1
+        anode: the surface of the rod, a :class:`festim.SurfaceSubdomain` with id 1
+        cathode: the can and the end caps beyond the insulating rings, a
+            :class:`festim.SurfaceSubdomain` with id 2
     """
 
-    rod_radius: float
-    can_radius: float
-    length: float
-    feedthrough_gap: float = 3e-3
-    axial_cells: int | None = field(default=None, compare=False)
-    cap_refinement: float = field(default=1.6, compare=False)
-
-    def __post_init__(self) -> None:
-        for attribute in ("rod_radius", "can_radius", "length", "feedthrough_gap"):
-            value = getattr(self, attribute)
-            if isinstance(value, bool) or not isinstance(value, int | float):
-                raise TypeError(
-                    f"{attribute} must be a float, not {type(value).__name__}"
-                )
+    def __init__(
+        self,
+        rod_radius: float,
+        can_radius: float,
+        length: float,
+        feedthrough_gap: float = 3e-3,
+        axial_cells: int | None = None,
+        cap_refinement: float = 1.6,
+    ) -> None:
+        dimensions = {
+            "rod_radius": rod_radius,
+            "can_radius": can_radius,
+            "length": length,
+            "feedthrough_gap": feedthrough_gap,
+        }
+        for name, value in dimensions.items():
+            is_number = isinstance(value, int | float) and not isinstance(value, bool)
+            if not is_number:
+                raise TypeError(f"{name} must be a float, not {type(value).__name__}")
             if value <= 0:
-                raise ValueError(f"{attribute} must be positive, not {value}")
-        if self.rod_radius >= self.can_radius:
+                raise ValueError(f"{name} must be positive, not {value}")
+        if rod_radius >= can_radius:
             raise ValueError(
-                f"rod_radius ({self.rod_radius}) must be smaller than can_radius "
-                f"({self.can_radius})"
+                f"rod_radius ({rod_radius}) must be smaller than can_radius "
+                f"({can_radius})"
             )
-        if self.rod_radius + self.feedthrough_gap >= self.can_radius:
+        if rod_radius + feedthrough_gap >= can_radius:
             raise ValueError("feedthrough_gap leaves no cathode on the end caps")
+
+        self.rod_radius = rod_radius
+        self.can_radius = can_radius
+        self.length = length
+        self.feedthrough_gap = feedthrough_gap
+        self.axial_cells = axial_cells
+        self.cap_refinement = cap_refinement
+
+        self.dimensions = (rod_radius, can_radius, length)
+        # The gas has no material here: the transport problem defines the transport
+        # properties of the gas once the electric field is known.
+        self.gas = F.VolumeSubdomain(id=1, material=None)
+        self.anode = F.SurfaceSubdomain(id=1, locator=self.is_anode)
+        self.cathode = F.SurfaceSubdomain(id=2, locator=self.is_cathode)
 
     @classmethod
     def from_volume(
@@ -163,15 +177,13 @@ class CoaxialChamber(Geometry):
             return np.pi * (can_radius**2 - rod_radius**2) * length - volume
 
         can_radius = brentq(excess_volume, rod_radius * (1 + 1e-9), 1.0)
-        return cls(rod_radius, can_radius, 2 * can_radius * aspect_ratio, **kwargs)
+        length = 2 * can_radius * aspect_ratio
+        return cls(rod_radius, can_radius, length, **kwargs)
 
     @property
     def volume(self) -> float:
+        """The gas volume (m3)."""
         return np.pi * (self.can_radius**2 - self.rod_radius**2) * self.length
-
-    @property
-    def _tolerance(self) -> float:
-        return 1e-9 * self.can_radius
 
     def default_axial_cells(self, radial_cells: int) -> int:
         """The number of cells along z that matches a radial resolution.
@@ -179,12 +191,13 @@ class CoaxialChamber(Geometry):
         The spacing at mid-height is about three times the outer radial spacing,
         bounded to between 0.6 and 1 times the radial count.
         """
-        a, R = self.rod_radius, self.can_radius
-        outer_spacing = R * np.log(R / a) / radial_cells
+        outer_spacing = (
+            self.can_radius * np.log(self.can_radius / self.rod_radius) / radial_cells
+        )
         cells = self.length / outer_spacing * 0.35
         return int(np.clip(cells, 0.6 * radial_cells, 1.0 * radial_cells))
 
-    def build_mesh(self, resolution: int) -> dmesh.Mesh:
+    def create_mesh(self, resolution: int) -> F.Mesh:
         """Creates a triangular (r, z) mesh, graded towards the rod and the caps.
 
         The radial spacing grows in proportion to r, which keeps the product of drift
@@ -192,9 +205,15 @@ class CoaxialChamber(Geometry):
 
         Args:
             resolution: the number of cells in the radial direction
+
+        Returns:
+            the mesh, in cylindrical coordinates
         """
-        a, R, L = self.rod_radius, self.can_radius, self.length
-        axial_cells = self.axial_cells or self.default_axial_cells(resolution)
+        axial_cells = self.axial_cells
+        if axial_cells is None:
+            axial_cells = self.default_axial_cells(resolution)
+
+        # a unit rectangle, then mapped onto the gas volume
         mesh = dmesh.create_rectangle(
             MPI.COMM_WORLD,
             [[0, -1], [1, 1]],
@@ -203,41 +222,68 @@ class CoaxialChamber(Geometry):
             diagonal=dmesh.DiagonalType.crossed,
         )
         x = mesh.geometry.x
-        s, t = x[:, 0].copy(), x[:, 1].copy()
-        x[:, 0] = a * (R / a) ** s
-        gamma = self.cap_refinement
-        stretched = np.tanh(gamma * t) / np.tanh(gamma) if gamma > 0 else t
-        x[:, 1] = 0.5 * L * (1 + stretched)
-        return mesh
+        s = x[:, 0].copy()  # 0 on the rod, 1 on the can
+        t = x[:, 1].copy()  # -1 on the bottom cap, 1 on the top cap
+
+        x[:, 0] = self.rod_radius * (self.can_radius / self.rod_radius) ** s
+
+        if self.cap_refinement > 0:
+            stretched = np.tanh(self.cap_refinement * t) / np.tanh(self.cap_refinement)
+        else:
+            stretched = t
+        x[:, 1] = 0.5 * self.length * (1 + stretched)
+
+        return F.Mesh(mesh, coordinate_system="cylindrical")
 
     def is_anode(self, x: np.ndarray) -> np.ndarray:
-        return np.isclose(x[0], self.rod_radius, atol=self._tolerance)
+        """Marks the points on the rod.
+
+        Args:
+            x: the coordinates, one column per point (the DOLFINx locator convention)
+        """
+        tolerance = 1e-9 * self.can_radius
+        return np.isclose(x[0], self.rod_radius, atol=tolerance)
 
     def is_cathode(self, x: np.ndarray) -> np.ndarray:
-        tol = self._tolerance
-        on_cap = np.isclose(x[1], 0, atol=tol) | np.isclose(x[1], self.length, atol=tol)
-        beyond_insulator = x[0] >= self.rod_radius + self.feedthrough_gap - tol
-        return np.isclose(x[0], self.can_radius, atol=tol) | (on_cap & beyond_insulator)
+        """Marks the points on the can and on the end caps beyond the insulating rings.
+
+        Args:
+            x: the coordinates, one column per point (the DOLFINx locator convention)
+        """
+        tolerance = 1e-9 * self.can_radius
+        on_can = np.isclose(x[0], self.can_radius, atol=tolerance)
+        on_bottom_cap = np.isclose(x[1], 0, atol=tolerance)
+        on_top_cap = np.isclose(x[1], self.length, atol=tolerance)
+        beyond_insulator = x[0] >= self.rod_radius + self.feedthrough_gap - tolerance
+        return on_can | ((on_bottom_cap | on_top_cap) & beyond_insulator)
 
     def distance_to_wall(self, points: np.ndarray, directions: np.ndarray):
-        r, z = points[:, 0], points[:, 1]
-        ux, uy, uz = directions[:, 0], directions[:, 1], directions[:, 2]
+        r = points[:, 0]
+        z = points[:, 1]
+        ux = directions[:, 0]
+        uy = directions[:, 1]
+        uz = directions[:, 2]
+
         to_can = _distance_to_cylinder(r, ux, uy, self.can_radius, inside=True)
         to_rod = _distance_to_cylinder(r, ux, uy, self.rod_radius, inside=False)
+
         with np.errstate(divide="ignore"):
-            to_caps = np.where(
-                uz[None, :] > 0,
-                (self.length - z[:, None]) / uz[None, :],
-                np.where(uz[None, :] < 0, -z[:, None] / uz[None, :], np.inf),
-            )
+            to_top_cap = (self.length - z[:, None]) / uz[None, :]
+            to_bottom_cap = -z[:, None] / uz[None, :]
+        to_caps = np.full_like(to_can, np.inf)
+        going_up = np.broadcast_to(uz[None, :] > 0, to_caps.shape)
+        going_down = np.broadcast_to(uz[None, :] < 0, to_caps.shape)
+        to_caps[going_up] = to_top_cap[going_up]
+        to_caps[going_down] = to_bottom_cap[going_down]
+
         return np.minimum(np.minimum(to_can, to_rod), to_caps)
 
     def wall_clustered_grid(self, nr: int, nz: int) -> tuple[np.ndarray, np.ndarray]:
-        a, R, L = self.rod_radius, self.can_radius, self.length
+        gap = self.can_radius - self.rod_radius
         s = np.linspace(-1, 1, nr)
-        r = a + 0.5 * (R - a) * (1 + np.sin(0.5 * np.pi * s))
+        r = self.rod_radius + 0.5 * gap * (1 + np.sin(0.5 * np.pi * s))
         t = np.linspace(-1, 1, nz)
-        z = 0.5 * L * (1 + np.sin(0.5 * np.pi * t))
+        z = 0.5 * self.length * (1 + np.sin(0.5 * np.pi * t))
         return r, z
 
 
@@ -257,6 +303,7 @@ def _distance_to_cylinder(
     Returns:
         the distances, shape (n, m), infinite for a ray that misses
     """
+    # the ray hits the cylinder where A s^2 + B s + C = 0
     A = ux**2 + uy**2
     B = 2 * r0[:, None] * ux[None, :]
     C = (r0**2 - radius**2)[:, None]

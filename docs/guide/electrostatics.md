@@ -62,7 +62,7 @@ The export {class}`~ion_chambers.SpaceChargeField` tells you where you stand. It
 a second electrostatic problem with the charge density of the solution as source and
 grounded electrodes, and reports the size of that field relative to the applied one.
 Treat results as indicative once it exceeds about 0.1. For the reference chamber at
-500 V that happens near 37 Ci/m³.
+500 V that happens near 41 Ci/m³.
 
 You can also give a charge density yourself:
 

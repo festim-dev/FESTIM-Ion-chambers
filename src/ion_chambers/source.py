@@ -3,33 +3,31 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
+import festim as F
 import numpy as np
 from dolfinx import fem
-from dolfinx import mesh as dmesh
 from scipy.interpolate import RegularGridInterpolator
 
-from ion_chambers.beta import ion_pairs_per_decay
+from ion_chambers.beta import efficiency_grid, ion_pairs_per_decay
 from ion_chambers.gas import Gas
 from ion_chambers.geometry import Geometry
-from ion_chambers.projection import lumped_projection
-from ion_chambers.wall_loss import efficiency_grid
 
 
 class IonisationSource(ABC):
     """Base class of the ionisation sources.
 
-    A model sums the contributions of all its sources, so tritium in the gas and
-    tritium held on the walls can be described side by side.
+    A transport problem sums the contributions of all its sources, so tritium in the
+    gas and tritium held on the walls can be described side by side.
     """
 
     @abstractmethod
-    def build(self, mesh: dmesh.Mesh, geometry: Geometry, gas: Gas):
+    def create_pair_production(self, mesh: F.Mesh, gas: Gas):
         """Creates the source term on the mesh.
 
         Args:
             mesh: the mesh of the gas volume
-            geometry: the chamber geometry
             gas: the gas
 
         Returns:
@@ -37,8 +35,13 @@ class IonisationSource(ABC):
         """
 
     @abstractmethod
-    def ideal_pair_rate(self, geometry: Geometry, gas: Gas) -> float:
-        """The pair production rate (1/s) if no beta energy were lost to the walls."""
+    def ideal_pair_rate(self, gas: Gas, gas_volume: float) -> float:
+        """The pair production rate (1/s) if no beta energy were lost to the walls.
+
+        Args:
+            gas: the gas
+            gas_volume: the volume of gas in the chamber (m3)
+        """
 
 
 class TritiumInGas(IonisationSource):
@@ -52,33 +55,36 @@ class TritiumInGas(IonisationSource):
 
     with :math:`A` the activity concentration, :math:`\bar{E}` the mean beta energy,
     :math:`W` the energy per ion pair in the gas and :math:`f` the wall-loss
-    efficiency (see :mod:`ion_chambers.wall_loss`).
+    efficiency (see :mod:`ion_chambers.beta`).
 
-    The activity can be changed after the model is initialised; the next
-    :meth:`ion_chambers.IonChamberModel.run` uses the new value without rebuilding
-    anything.
+    The activity can be changed after the transport problem is initialised; the next
+    ``run()`` uses the new value without rebuilding anything.
 
     Args:
         activity: the activity concentration (Bq/m3)
-        wall_loss: whether betas lose energy to the walls. ``False`` sets f = 1.
+        geometry: the chamber geometry, used to compute how much beta energy is lost
+            to the walls. ``None`` ignores wall losses (f = 1).
         n_rays: the number of betas followed per point in the wall-loss Monte Carlo
 
     Attributes:
         activity: the activity concentration (Bq/m3)
-        wall_loss: whether betas lose energy to the walls
+        geometry: the chamber geometry, or ``None``
         n_rays: the number of betas followed per point in the wall-loss Monte Carlo
-        efficiency: the wall-loss efficiency on the mesh, after ``build``
+        efficiency: the wall-loss efficiency on the mesh, once the source is created
     """
 
     def __init__(
-        self, activity: float, wall_loss: bool = True, n_rays: int = 3000
+        self,
+        activity: float,
+        geometry: Geometry | None = None,
+        n_rays: int = 3000,
     ) -> None:
-        self._rate: fem.Constant | None = None
-        self._pairs_per_decay: float | None = None
+        self._rate = None
+        self._pairs_per_decay = None
         self.activity = activity
-        self.wall_loss = wall_loss
+        self.geometry = geometry
         self.n_rays = n_rays
-        self.efficiency: fem.Function | None = None
+        self.efficiency = None
 
     @property
     def activity(self) -> float:
@@ -86,43 +92,110 @@ class TritiumInGas(IonisationSource):
 
     @activity.setter
     def activity(self, value: float) -> None:
-        if isinstance(value, bool) or not isinstance(value, int | float | np.number):
+        is_number = isinstance(value, int | float | np.number)
+        if not is_number or isinstance(value, bool):
             raise TypeError(f"activity must be a float, not {type(value).__name__}")
         if value < 0:
             raise ValueError(f"activity must not be negative, not {value}")
         self._activity = float(value)
+        # if the source is already part of a problem, update its fenics constant
         if self._rate is not None:
             self._rate.value = self._activity * self._pairs_per_decay
 
-    def build(self, mesh: dmesh.Mesh, geometry: Geometry, gas: Gas):
+    def create_pair_production(self, mesh: F.Mesh, gas: Gas):
         self._pairs_per_decay = ion_pairs_per_decay(gas.w_value)
-        self._rate = fem.Constant(mesh, self.activity * self._pairs_per_decay)
+        self._rate = fem.Constant(mesh.mesh, self.activity * self._pairs_per_decay)
 
-        V1 = fem.functionspace(mesh, ("Lagrange", 1))
+        V1 = fem.functionspace(mesh.mesh, ("Lagrange", 1))
         self.efficiency = fem.Function(V1, name="wall_loss_efficiency")
-        if self.wall_loss:
-            self.efficiency.x.array[:] = self._project_efficiency(
-                mesh, V1, geometry, gas
-            )
-        else:
+        if self.geometry is None:
             self.efficiency.x.array[:] = 1.0
+        else:
+            self.efficiency.x.array[:] = self._efficiency_at_nodes(mesh, V1, gas)
+
         return self._rate * self.efficiency
 
-    def _project_efficiency(
-        self, mesh: dmesh.Mesh, V1: fem.FunctionSpace, geometry: Geometry, gas: Gas
+    def _efficiency_at_nodes(
+        self, mesh: F.Mesh, V1: fem.FunctionSpace, gas: Gas
     ) -> np.ndarray:
-        r, z, f = efficiency_grid(geometry, gas.density, n_rays=self.n_rays)
-        interpolate = RegularGridInterpolator(
-            (r, z), f, bounds_error=False, fill_value=None
+        """The wall-loss efficiency at the nodes of the mesh."""
+        r, z, efficiency = efficiency_grid(
+            self.geometry, gas.density, n_rays=self.n_rays
+        )
+        interpolator = RegularGridInterpolator(
+            (r, z), efficiency, bounds_error=False, fill_value=None
         )
 
-        def efficiency(r_points: np.ndarray, z_points: np.ndarray) -> np.ndarray:
-            inside = np.c_[
-                np.clip(r_points, r[0], r[-1]), np.clip(z_points, z[0], z[-1])
-            ]
-            return np.clip(interpolate(inside), 0, 1)
+        def efficiency_at(r_points: np.ndarray, z_points: np.ndarray) -> np.ndarray:
+            # points a rounding error outside the grid are moved onto its edge
+            r_inside = np.clip(r_points, r[0], r[-1])
+            z_inside = np.clip(z_points, z[0], z[-1])
+            values = interpolator(np.column_stack([r_inside, z_inside]))
+            return np.clip(values, 0, 1)
 
-        return lumped_projection(mesh, V1, efficiency, geometry.coordinate_system)
+        is_cylindrical = str(mesh.coordinate_system) == "cylindrical"
+        return lumped_projection(V1, efficiency_at, weight_by_radius=is_cylindrical)
 
-    def ideal_pair_rate(self, geometry: Geometry, gas: Gas) -> float:
-        return self.activity * ion_pairs_per_decay(gas.w_value) * geometry.volume
+    def ideal_pair_rate(self, gas: Gas, gas_volume: float) -> float:
+        return self.activity * ion_pairs_per_decay(gas.w_value) * gas_volume
+
+
+def lumped_projection(
+    V1: fem.FunctionSpace,
+    function: Callable[[np.ndarray, np.ndarray], np.ndarray],
+    weight_by_radius: bool = True,
+    subdivisions: int = 6,
+) -> np.ndarray:
+    """Nodal values ``f_i = int f phi_i dV / int phi_i dV`` of a function.
+
+    ``f`` is sampled on ``subdivisions**2`` points per cell, so the projection keeps
+    the integral of a layer thinner than the cells, where nodal interpolation would
+    smear it into the neighbouring cells.
+
+    Only for P1 on triangles, on one MPI rank.
+
+    Args:
+        V1: the P1 function space
+        function: the function, called with the two coordinates as flat arrays
+        weight_by_radius: whether ``dV`` carries the factor r of a cylindrical mesh
+        subdivisions: the number of subdivisions of each cell edge
+
+    Returns:
+        the nodal values, ordered like the dofs of ``V1``
+    """
+    mesh = V1.mesh
+    vertices = mesh.geometry.x[:, :2][mesh.geometry.dofmaps[0]]  # (cells, 3, 2)
+    dofs = V1.dofmap.list  # same local vertex order as the P1 geometry
+
+    # Split each triangle into subdivisions**2 small triangles and take their
+    # centroids as sample points, in barycentric coordinates (l1, l2).
+    k = subdivisions
+    barycentric = []
+    for i in range(k):
+        for j in range(k - i):
+            barycentric.append(((i + 1 / 3) / k, (j + 1 / 3) / k))  # pointing up
+            if i + j < k - 1:
+                barycentric.append(((i + 2 / 3) / k, (j + 2 / 3) / k))  # pointing down
+    barycentric = np.array(barycentric)
+    n_samples = len(barycentric)
+
+    # the three P1 basis functions at the sample points
+    basis = np.column_stack([1 - barycentric.sum(axis=1), barycentric])
+    samples = np.einsum("qv,cvd->cqd", basis, vertices)  # (cells, samples, 2)
+
+    edge_1 = vertices[:, 1] - vertices[:, 0]
+    edge_2 = vertices[:, 2] - vertices[:, 0]
+    cell_area = 0.5 * np.abs(edge_1[:, 0] * edge_2[:, 1] - edge_1[:, 1] * edge_2[:, 0])
+    weights = np.repeat(cell_area[:, None] / n_samples, n_samples, axis=1)
+    if weight_by_radius:
+        weights = weights * samples[..., 0]
+
+    values = function(samples[..., 0].ravel(), samples[..., 1].ravel())
+    values = values.reshape(samples.shape[:2])
+
+    index_map = V1.dofmap.index_map
+    numerator = np.zeros(index_map.size_local + index_map.num_ghosts)
+    denominator = np.zeros_like(numerator)
+    np.add.at(numerator, dofs, np.einsum("cq,qv->cv", weights * values, basis))
+    np.add.at(denominator, dofs, np.einsum("cq,qv->cv", weights, basis))
+    return numerator / denominator

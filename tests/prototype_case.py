@@ -38,3 +38,19 @@ def reference_chamber() -> ic.CoaxialChamber:
     return ic.CoaxialChamber.from_volume(
         volume=1e-3, rod_radius=1.5e-3, can_radius=0.05
     )
+
+
+def solve_potential(
+    chamber: ic.CoaxialChamber, resolution: int, bias: float = 500.0
+) -> ic.ElectrostaticProblem:
+    """The potential of a chamber with its anode at ``bias`` and a grounded cathode."""
+    electrostatics = ic.ElectrostaticProblem()
+    electrostatics.mesh = chamber.create_mesh(resolution=resolution)
+    electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+    electrostatics.boundary_conditions = [
+        ic.FixedPotentialBC(subdomain=chamber.anode, value=bias),
+        ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+    ]
+    electrostatics.initialise()
+    electrostatics.run()
+    return electrostatics

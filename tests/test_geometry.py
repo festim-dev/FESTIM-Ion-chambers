@@ -1,3 +1,4 @@
+import festim as F
 import numpy as np
 import pytest
 
@@ -61,11 +62,33 @@ def test_rejects_insulator_covering_the_caps():
         )
 
 
-def test_geometries_with_the_same_dimensions_are_equal():
-    """Chambers that differ only in mesh options compare equal, so they share the
-    wall-loss cache."""
+def test_dimensions_ignore_the_mesh_options():
+    """Chambers that differ only in mesh options have the same dimensions, so they
+    share the stored wall-loss calculation."""
     a = ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=10)
-    assert a == ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=20)
+    assert a.dimensions == ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=20).dimensions
+
+
+def test_gas_is_a_festim_volume_subdomain(chamber):
+    """The gas of a chamber is a FESTIM volume subdomain."""
+    assert isinstance(chamber.gas, F.VolumeSubdomain)
+
+
+@pytest.mark.parametrize("electrode", ["anode", "cathode"])
+def test_electrodes_are_festim_surface_subdomains(chamber, electrode):
+    """The anode and the cathode of a chamber are FESTIM surface subdomains."""
+    assert isinstance(getattr(chamber, electrode), F.SurfaceSubdomain)
+
+
+def test_electrodes_have_different_ids(chamber):
+    """The anode and the cathode carry different surface ids."""
+    assert chamber.anode.id != chamber.cathode.id
+
+
+def test_mesh_is_a_cylindrical_festim_mesh(chamber):
+    """create_mesh returns a FESTIM mesh in cylindrical coordinates."""
+    mesh = chamber.create_mesh(4)
+    assert isinstance(mesh, F.Mesh) and str(mesh.coordinate_system) == "cylindrical"
 
 
 @pytest.mark.parametrize(
@@ -123,20 +146,20 @@ def test_distance_to_wall(chamber, direction, expected):
 
 def test_mesh_spans_the_gas_radially(chamber):
     """The mesh runs from the rod radius to the can radius."""
-    r = chamber.build_mesh(10).geometry.x[:, 0]
+    r = chamber.create_mesh(10).mesh.geometry.x[:, 0]
     assert np.allclose([r.min(), r.max()], [1.5e-3, 0.05])
 
 
 def test_mesh_spans_the_gas_axially(chamber):
     """The mesh runs from one end cap to the other."""
-    z = chamber.build_mesh(10).geometry.x[:, 1]
+    z = chamber.create_mesh(10).mesh.geometry.x[:, 1]
     assert np.allclose([z.min(), z.max()], [0.0, chamber.length])
 
 
 def test_axial_cells_override():
     """Setting axial_cells gives a mesh with exactly that many cells along z."""
     geometry = ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=7)
-    mesh = geometry.build_mesh(5)
+    mesh = geometry.create_mesh(5).mesh
     # a crossed rectangle mesh has four triangles per quadrilateral
     assert mesh.topology.index_map(2).size_local == 4 * 5 * 7
 

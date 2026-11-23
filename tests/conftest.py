@@ -1,7 +1,7 @@
 """Shared fixtures."""
 
 import pytest
-from prototype_case import air, reference_chamber
+from prototype_case import air, reference_chamber, solve_potential
 
 import ion_chambers as ic
 
@@ -15,35 +15,49 @@ def chamber() -> ic.CoaxialChamber:
 
 
 @pytest.fixture
-def coarse_model() -> ic.IonChamberModel:
-    """A cheap model, not initialised: coarse mesh, no wall-loss Monte Carlo."""
-    return ic.IonChamberModel(
-        geometry=reference_chamber(),
+def coarse_electrostatics(chamber) -> ic.ElectrostaticProblem:
+    """The potential of the reference chamber at 500 V on a coarse mesh, solved."""
+    return solve_potential(chamber, resolution=30)
+
+
+@pytest.fixture
+def coarse_transport(coarse_electrostatics) -> ic.ChargeTransportProblem:
+    """A cheap transport problem, not initialised: coarse mesh, no wall losses."""
+    return ic.ChargeTransportProblem(
+        electrostatic_problem=coarse_electrostatics,
         gas=air(),
-        sources=ic.TritiumInGas(activity=3.7e4, wall_loss=False),
-        resolution=30,
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
     )
 
 
 @pytest.fixture(scope="session")
-def reference_model() -> ic.IonChamberModel:
-    """The reference chamber in air at 500 V, initialised, 60 radial cells."""
-    model = ic.IonChamberModel(
-        geometry=reference_chamber(),
+def reference_results() -> dict[str, ic.ChamberQuantity]:
+    """The quantities of the reference chamber in air at 500 V, 60 radial cells.
+
+    The problem is run once for each of ACTIVITIES, so ``data`` of every quantity
+    holds one value per activity, in that order.
+    """
+    chamber = reference_chamber()
+    quantities = {
+        "current": ic.ChamberCurrent(surface=chamber.anode),
+        "anode_current": ic.ElectrodeCurrent(surface=chamber.anode),
+        "cathode_current": ic.ElectrodeCurrent(surface=chamber.cathode),
+        "ideal_current": ic.IdealCurrent(),
+        "generation": ic.PairGeneration(),
+        "recombination": ic.Recombination(),
+        "wall_efficiency": ic.WallEfficiency(),
+        "collection_efficiency": ic.CollectionEfficiency(),
+        "space_charge_field": ic.SpaceChargeField(),
+    }
+    tritium = ic.TritiumInGas(activity=0.0, geometry=chamber)
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=solve_potential(chamber, resolution=60),
         gas=air(),
-        sources=ic.TritiumInGas(activity=0.0),
-        bias=500.0,
-        resolution=60,
+        ionisation_sources=[tritium],
+        exports=list(quantities.values()),
     )
-    model.initialise()
-    return model
-
-
-@pytest.fixture(scope="session")
-def reference_readings(reference_model) -> dict[float, ic.Reading]:
-    """Readings of the reference model, keyed by activity (Bq/m3)."""
-    readings = {}
+    transport.initialise()
     for activity in ACTIVITIES:
-        reference_model.sources[0].activity = activity
-        readings[activity] = reference_model.run()
-    return readings
+        tritium.activity = activity
+        transport.run()
+    return quantities

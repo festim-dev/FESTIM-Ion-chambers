@@ -27,8 +27,6 @@ from scifem import assemble_scalar
 from ion_chambers.constants import E_CHARGE
 from ion_chambers.electrostatic_problem import ElectrostaticProblem, FixedPotentialBC
 
-# The transport problem imports this module, so importing it here at runtime would be
-# a circular import. It is only needed for the annotations.
 if TYPE_CHECKING:
     from ion_chambers.charge_transport_problem import ChargeTransportProblem
 
@@ -66,12 +64,12 @@ class ChamberQuantity(F.exports.DerivedQuantity):
     """
 
     def compute(self, problem: ChargeTransportProblem) -> None:
-        """Computes the quantity and stores it in ``value`` and ``data``."""
-        self.value = float(self.evaluate(problem))
-        self.data.append(self.value)
+        """Computes the quantity for a solved problem and stores it in ``value`` and
+        ``data``. Implemented by each subclass.
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
-        """Returns the quantity for a solved problem. Implemented by each subclass."""
+        Args:
+            problem: the transport problem, after a solve
+        """
         raise NotImplementedError
 
 
@@ -144,7 +142,7 @@ class ChamberCurrent(ChamberSurfaceQuantity):
     def title(self) -> str:
         return "Chamber current (A)"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
+    def compute(self, problem: ChargeTransportProblem) -> None:
         # The potential difference between the readout electrode and the other one.
         # Dividing the potential by it gives the weighting potential.
         readout_potential = None
@@ -165,7 +163,8 @@ class ChamberCurrent(ChamberSurfaceQuantity):
         weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         dx = problem.dx(problem.gas_volume.id)
         integrand = ufl.dot(_charge_flux(problem), weighting_field)
-        return E_CHARGE * assemble_scalar(weight * integrand * dx)
+        self.value = E_CHARGE * assemble_scalar(weight * integrand * dx)
+        self.data.append(self.value)
 
 
 class ElectrodeCurrent(ChamberSurfaceQuantity):
@@ -187,12 +186,13 @@ class ElectrodeCurrent(ChamberSurfaceQuantity):
     def title(self) -> str:
         return f"Current through surface {self.surface.id} (A)"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
+    def compute(self, problem: ChargeTransportProblem) -> None:
         weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         ds = problem.ds(self.surface.id)
         normal = ufl.FacetNormal(problem.mesh.mesh)
         outward_flux = ufl.dot(_charge_flux(problem), normal)
-        return E_CHARGE * assemble_scalar(weight * outward_flux * ds)
+        self.value = E_CHARGE * assemble_scalar(weight * outward_flux * ds)
+        self.data.append(self.value)
 
 
 class PairGeneration(ChamberVolumeQuantity):
@@ -207,10 +207,11 @@ class PairGeneration(ChamberVolumeQuantity):
     def title(self) -> str:
         return f"Pair generation volume {self.volume.id} (1/s)"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
+    def compute(self, problem: ChargeTransportProblem) -> None:
         weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         dx = problem.dx(self.volume.id)
-        return assemble_scalar(weight * problem.pair_production * dx)
+        self.value = assemble_scalar(weight * problem.pair_production * dx)
+        self.data.append(self.value)
 
 
 class Recombination(ChamberVolumeQuantity):
@@ -225,7 +226,7 @@ class Recombination(ChamberVolumeQuantity):
     def title(self) -> str:
         return f"Recombination volume {self.volume.id} (1/s)"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
+    def compute(self, problem: ChargeTransportProblem) -> None:
         weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         dx = problem.dx(self.volume.id)
         total = 0.0
@@ -237,7 +238,8 @@ class Recombination(ChamberVolumeQuantity):
             for carrier in reaction.reactant:
                 local_rate = local_rate * carrier.post_processing_solution
             total += assemble_scalar(weight * local_rate * dx)
-        return total
+        self.value = total
+        self.data.append(self.value)
 
 
 class IdealCurrent(ChamberVolumeQuantity):
@@ -253,7 +255,7 @@ class IdealCurrent(ChamberVolumeQuantity):
     def title(self) -> str:
         return f"Ideal current volume {self.volume.id} (A)"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
+    def compute(self, problem: ChargeTransportProblem) -> None:
         weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         dx = problem.dx(self.volume.id)
         size_of_volume = assemble_scalar(weight * dx)
@@ -261,7 +263,8 @@ class IdealCurrent(ChamberVolumeQuantity):
         ideal_pair_rate = 0.0
         for source in problem.ionisation_sources:
             ideal_pair_rate += source.ideal_pair_rate(problem.gas, size_of_volume)
-        return E_CHARGE * ideal_pair_rate
+        self.value = E_CHARGE * ideal_pair_rate
+        self.data.append(self.value)
 
 
 class WallEfficiency(ChamberVolumeQuantity):
@@ -278,12 +281,17 @@ class WallEfficiency(ChamberVolumeQuantity):
     def title(self) -> str:
         return f"Wall efficiency volume {self.volume.id}"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
-        generation = PairGeneration(volume=self.volume).evaluate(problem)
-        ideal_current = IdealCurrent(volume=self.volume).evaluate(problem)
-        if ideal_current == 0:
-            return float("nan")
-        return E_CHARGE * generation / ideal_current
+    def compute(self, problem: ChargeTransportProblem) -> None:
+        generation = PairGeneration(volume=self.volume)
+        generation.compute(problem)
+        ideal_current = IdealCurrent(volume=self.volume)
+        ideal_current.compute(problem)
+
+        if ideal_current.value == 0:
+            self.value = float("nan")
+        else:
+            self.value = E_CHARGE * generation.value / ideal_current.value
+        self.data.append(self.value)
 
 
 class CollectionEfficiency(ChamberVolumeQuantity):
@@ -298,12 +306,17 @@ class CollectionEfficiency(ChamberVolumeQuantity):
     def title(self) -> str:
         return f"Collection efficiency volume {self.volume.id}"
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
-        generation = PairGeneration(volume=self.volume).evaluate(problem)
-        recombination = Recombination(volume=self.volume).evaluate(problem)
-        if generation == 0:
-            return float("nan")
-        return (generation - recombination) / generation
+    def compute(self, problem: ChargeTransportProblem) -> None:
+        generation = PairGeneration(volume=self.volume)
+        generation.compute(problem)
+        recombination = Recombination(volume=self.volume)
+        recombination.compute(problem)
+
+        if generation.value == 0:
+            self.value = float("nan")
+        else:
+            self.value = (generation.value - recombination.value) / generation.value
+        self.data.append(self.value)
 
 
 class SpaceChargeField(ChamberVolumeQuantity):
@@ -361,7 +374,7 @@ class SpaceChargeField(ChamberVolumeQuantity):
         self._space_charge_problem.facet_meshtags = applied.facet_meshtags
         self._space_charge_problem.initialise()
 
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
+    def compute(self, problem: ChargeTransportProblem) -> None:
         if self._space_charge_problem is None:
             self._create_space_charge_problem(problem)
 
@@ -386,4 +399,5 @@ class SpaceChargeField(ChamberVolumeQuantity):
         applied_norm_squared = assemble_scalar(
             weight * ufl.dot(applied_field, applied_field) * dx
         )
-        return np.sqrt(induced_norm_squared / applied_norm_squared)
+        self.value = float(np.sqrt(induced_norm_squared / applied_norm_squared))
+        self.data.append(self.value)

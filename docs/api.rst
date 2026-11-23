@@ -53,7 +53,7 @@ Exports
 -------
 
 .. autoclass:: ion_chambers.ChamberQuantity
-   :members: compute, evaluate
+   :members: compute
 
 .. autoclass:: ion_chambers.ChamberSurfaceQuantity
 

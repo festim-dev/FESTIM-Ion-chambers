@@ -99,8 +99,9 @@ cylindrical mesh.
 ## Adding a quantity
 
 A new quantity is a child of {class}`~ion_chambers.ChamberSurfaceQuantity` or
-{class}`~ion_chambers.ChamberVolumeQuantity`, with a `title` and an
-`evaluate(problem)` method that returns a number. For instance, the number of
+{class}`~ion_chambers.ChamberVolumeQuantity`, with a `title` and a
+`compute(problem)` method that stores the number in `value` and appends it to
+`data`, as FESTIM's quantities do. For instance, the number of
 carriers of every kind in a volume:
 
 ```python
@@ -114,7 +115,7 @@ class TotalCarriers(ic.ChamberVolumeQuantity):
     def title(self):
         return f"Total carriers volume {self.volume.id}"
 
-    def evaluate(self, problem):
+    def compute(self, problem):
         # the factor 2 pi r of a cylindrical mesh
         weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         dx = problem.dx(self.volume.id)
@@ -122,7 +123,8 @@ class TotalCarriers(ic.ChamberVolumeQuantity):
         total_density = 0
         for carrier in problem.gas.carriers:
             total_density += carrier.post_processing_solution
-        return assemble_scalar(weight * total_density * dx)
+        self.value = assemble_scalar(weight * total_density * dx)
+        self.data.append(self.value)
 
 
 total_carriers = TotalCarriers(volume=chamber.gas)

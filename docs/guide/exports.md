@@ -1,11 +1,12 @@
 # Results and exports
 
-Results are obtained the FESTIM way. You create the quantities you want, add them to
-the `exports` of the transport problem, and read them after the run.
+Results are obtained the FESTIM way. You create the quantities you want, each with the
+surface or the volume it is computed on, add them to the `exports` of the transport
+problem, and read them after the run.
 
 ```python
 current = ic.ChamberCurrent(surface=chamber.anode)
-collection_efficiency = ic.CollectionEfficiency()
+collection_efficiency = ic.CollectionEfficiency(volume=chamber.gas)
 
 transport.exports = [current, collection_efficiency]
 transport.initialise()
@@ -21,7 +22,10 @@ To write a quantity to a file, give it a filename ending in `.csv` or `.txt`:
 current = ic.ChamberCurrent(surface=chamber.anode, filename="results/current.csv")
 ```
 
-The quantities are children of FESTIM's `DerivedQuantity`.
+The quantities are children of FESTIM's `DerivedQuantity`. A FESTIM quantity is
+computed from the field of one species, as in `festim.SurfaceFlux(field=..., surface=...)`.
+The quantities here involve every charge carrier and the potential, so they take a
+`surface` or a `volume` but no field.
 
 ## What the chamber reads
 
@@ -32,7 +36,8 @@ The quantities are children of FESTIM's `DerivedQuantity`.
 
 {class}`~ion_chambers.IdealCurrent`
 : The current if every beta stopped in the gas and every charge reached an electrode:
-  `e × activity × volume × pairs per decay`.
+  `e × activity × volume × pairs per decay`. `volume` is the gas, as for the
+  quantities below.
 
 The ratio of the two is the product of the two efficiencies below, up to
 discretisation error.
@@ -53,7 +58,8 @@ discretisation error.
   at that surface. In exact arithmetic its size equals the chamber current. The
   difference shows the discretisation error of the mesh you used; the two typically
   agree to better than 0.01%. It is negative on the electrode that collects the
-  negative carriers.
+  negative carriers. For the flux of one carrier alone, use FESTIM's
+  `F.SurfaceFlux(field=electrons, surface=chamber.anode)`, in carriers per second.
 
 {class}`~ion_chambers.SpaceChargeField`
 : The field the charges in the gas would create, relative to the applied field. The
@@ -92,17 +98,32 @@ cylindrical mesh.
 
 ## Adding a quantity
 
-A new quantity is a child of {class}`~ion_chambers.ChamberQuantity` with a `title` and
-an `evaluate(problem)` method that returns a number:
+A new quantity is a child of {class}`~ion_chambers.ChamberSurfaceQuantity` or
+{class}`~ion_chambers.ChamberVolumeQuantity`, with a `title` and an
+`evaluate(problem)` method that returns a number. For instance, the number of
+carriers of every kind in a volume:
 
 ```python
-class AnodeBias(ic.ChamberQuantity):
-    """The largest potential in the chamber (V)."""
+from scifem import assemble_scalar
+
+
+class TotalCarriers(ic.ChamberVolumeQuantity):
+    """The number of charge carriers in a volume."""
 
     @property
     def title(self):
-        return "Largest potential (V)"
+        return f"Total carriers volume {self.volume.id}"
 
     def evaluate(self, problem):
-        return problem.potential.x.array.max()
+        # the factor 2 pi r of a cylindrical mesh
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
+        dx = problem.dx(self.volume.id)
+
+        total_density = 0
+        for carrier in problem.gas.carriers:
+            total_density += carrier.post_processing_solution
+        return assemble_scalar(weight * total_density * dx)
+
+
+total_carriers = TotalCarriers(volume=chamber.gas)
 ```

@@ -82,8 +82,8 @@ add them to the problem, and read their `value` after the run.
 
 ```python
 current = ic.ChamberCurrent(surface=chamber.anode)
-collection_efficiency = ic.CollectionEfficiency()
-wall_efficiency = ic.WallEfficiency()
+collection_efficiency = ic.CollectionEfficiency(volume=chamber.gas)
+wall_efficiency = ic.WallEfficiency(volume=chamber.gas)
 
 transport = ic.ChargeTransportProblem()
 transport.electrostatic_problem = electrostatics

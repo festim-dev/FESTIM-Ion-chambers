@@ -68,7 +68,7 @@ air = ic.Gas(
 
 # 3. the transport of the charge carriers
 current = ic.ChamberCurrent(surface=chamber.anode)
-collection_efficiency = ic.CollectionEfficiency()
+collection_efficiency = ic.CollectionEfficiency(volume=chamber.gas)
 
 transport = ic.ChargeTransportProblem()
 transport.electrostatic_problem = electrostatics

@@ -36,10 +36,10 @@ tritium = ic.TritiumInGas(activity=0.0, geometry=chamber)
 
 current = ic.ChamberCurrent(surface=chamber.anode)
 anode_current = ic.ElectrodeCurrent(surface=chamber.anode)
-ideal_current = ic.IdealCurrent()
-wall_efficiency = ic.WallEfficiency()
-collection_efficiency = ic.CollectionEfficiency()
-space_charge_field = ic.SpaceChargeField()
+ideal_current = ic.IdealCurrent(volume=chamber.gas)
+wall_efficiency = ic.WallEfficiency(volume=chamber.gas)
+collection_efficiency = ic.CollectionEfficiency(volume=chamber.gas)
+space_charge_field = ic.SpaceChargeField(volume=chamber.gas)
 
 transport = ic.ChargeTransportProblem()
 transport.electrostatic_problem = electrostatics

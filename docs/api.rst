@@ -55,6 +55,10 @@ Exports
 .. autoclass:: ion_chambers.ChamberQuantity
    :members: compute, evaluate
 
+.. autoclass:: ion_chambers.ChamberSurfaceQuantity
+
+.. autoclass:: ion_chambers.ChamberVolumeQuantity
+
 .. autoclass:: ion_chambers.ChamberCurrent
 
 .. autoclass:: ion_chambers.ElectrodeCurrent

@@ -7,9 +7,10 @@ import numpy as np
 from dolfinx import fem
 
 from ion_chambers.cellwise_diffusion_material import CellwiseDiffusionMaterial
+from ion_chambers.coefficient import Coefficient
 from ion_chambers.constants import TOWNSEND
 from ion_chambers.field import LaplaceField, PotentialSolver, SpaceChargePerturbation
-from ion_chambers.gas import Coefficient, Gas
+from ion_chambers.gas import Gas
 from ion_chambers.geometry import Geometry
 from ion_chambers.mobility_electromigration import MobilityElectromigration
 from ion_chambers.readout import Reading, compute_reading
@@ -60,7 +61,7 @@ class IonChamberModel:
         mesh: the mesh, after ``initialise``
         potential: the electric potential (V), after ``initialise``
         reduced_field: E/N in each cell (Td), after ``initialise``
-        species: the FESTIM species of each carrier, keyed by name
+        species: the charge carriers of the gas, keyed by name
         mobilities: the mobility of each carrier (m2/V/s), a float or a cell-wise field
         diffusivities: the stabilised diffusion coefficient of each carrier (m2/s), a
             cell-wise field
@@ -83,6 +84,7 @@ class IonChamberModel:
                 w_value=33.97,
                 density=1.205,
                 carriers=[electrons, positive_ions],
+                ionisation_products=(electrons, positive_ions),
             )
 
             model = ic.IonChamberModel(
@@ -205,10 +207,11 @@ class IonChamberModel:
         problem = F.HydrogenTransportProblem()
         problem.mesh = F.Mesh(self.mesh, coordinate_system=geometry.coordinate_system)
 
-        self.species = {
-            carrier.name: F.Species(carrier.name) for carrier in gas.carriers
-        }
-        problem.species = list(self.species.values())
+        # A ChargeCarrier is a festim.Species, so the carriers are the species.
+        self.species = {}
+        for carrier in gas.carriers:
+            self.species[carrier.name] = carrier
+        problem.species = gas.carriers
 
         material = CellwiseDiffusionMaterial(self.diffusivities, name=gas.name)
         volume = F.VolumeSubdomain(id=1, material=material)
@@ -217,45 +220,49 @@ class IonChamberModel:
         problem.subdomains = [volume, anode, cathode]
         problem.temperature = gas.temperature
 
-        problem.sources = [
-            F.ParticleSource(
-                value=self.pair_production, volume=volume, species=self.species[name]
+        # each ionisation creates one of each of the two ionisation products
+        problem.sources = []
+        for carrier in gas.ionisation_products:
+            source = F.ParticleSource(
+                value=self.pair_production, volume=volume, species=carrier
             )
-            for name in gas.ionisation_products
-        ]
-        problem.reactions = [
-            F.GenericReaction(
-                reactant=[self.species[name] for name in reaction.reactants],
-                product=[self.species[name] for name in reaction.products] or None,
-                forward_rate=rate,
-                volume=volume,
-            )
-            for reaction, rate in zip(gas.reactions, self.rates)
-        ]
-        problem.drift_terms = [
-            MobilityElectromigration(
-                species=self.species[carrier.name],
+            problem.sources.append(source)
+
+        # A CarrierReaction is a festim.GenericReaction that was created without a
+        # volume or a final rate. Both are known now.
+        for i, reaction in enumerate(gas.reactions):
+            reaction.volume = volume
+            reaction.forward_rate = self.rates[i]
+        problem.reactions = gas.reactions
+
+        problem.drift_terms = []
+        for carrier in gas.carriers:
+            drift = MobilityElectromigration(
+                species=carrier,
                 charge=carrier.charge,
                 mobility=self.mobilities[carrier.name],
                 potential=self.potential,
                 subdomain=volume,
             )
-            for carrier in gas.carriers
-        ]
+            problem.drift_terms.append(drift)
 
         # An electrode absorbs the carriers the field drives into it (outflow) and
         # emits none (zero density for the carriers the field pushes away).
         problem.boundary_conditions = []
         for carrier in gas.carriers:
-            species = self.species[carrier.name]
             drawn_to_anode = carrier.charge * self.bias < 0
-            collector, repeller = (
-                (anode, cathode) if drawn_to_anode else (cathode, anode)
+            if drawn_to_anode:
+                collector = anode
+                repeller = cathode
+            else:
+                collector = cathode
+                repeller = anode
+            problem.boundary_conditions.append(
+                F.OutflowBC(subdomain=collector, species=carrier)
             )
-            problem.boundary_conditions += [
-                F.OutflowBC(subdomain=collector, species=species),
-                F.FixedConcentrationBC(subdomain=repeller, value=0.0, species=species),
-            ]
+            problem.boundary_conditions.append(
+                F.FixedConcentrationBC(subdomain=repeller, value=0.0, species=carrier)
+            )
 
         problem.settings = F.Settings(
             atol=1e-30, rtol=1e-10, max_iterations=40, transient=False

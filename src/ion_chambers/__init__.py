@@ -7,9 +7,11 @@ from ion_chambers._festim_check import check_festim as _check_festim
 _check_festim(_festim)
 
 from ion_chambers import beta, constants, wall_loss
+from ion_chambers.carrier_reaction import CarrierReaction
 from ion_chambers.cellwise_diffusion_material import CellwiseDiffusionMaterial
+from ion_chambers.charge_carrier import ChargeCarrier
 from ion_chambers.field import LaplaceField, PotentialSolver, SpaceChargePerturbation
-from ion_chambers.gas import ChargeCarrier, Gas, Reaction
+from ion_chambers.gas import Gas
 from ion_chambers.geometry import CoaxialChamber, Geometry
 from ion_chambers.mobility_electromigration import MobilityElectromigration
 from ion_chambers.model import IonChamberModel
@@ -19,6 +21,7 @@ from ion_chambers.stabilisation import DiffusionFloor
 from ion_chambers.studies import response_curve, richardson, save_json
 
 __all__ = [
+    "CarrierReaction",
     "CellwiseDiffusionMaterial",
     "ChargeCarrier",
     "CoaxialChamber",
@@ -30,7 +33,6 @@ __all__ = [
     "LaplaceField",
     "MobilityElectromigration",
     "PotentialSolver",
-    "Reaction",
     "Reading",
     "SpaceChargePerturbation",
     "TritiumInGas",

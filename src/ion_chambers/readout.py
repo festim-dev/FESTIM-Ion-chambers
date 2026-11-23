@@ -14,6 +14,7 @@ from ion_chambers.constants import E_CHARGE
 from ion_chambers.integration import assemble, volume_weight
 
 if TYPE_CHECKING:
+    from ion_chambers.charge_carrier import ChargeCarrier
     from ion_chambers.model import IonChamberModel
 
 
@@ -64,26 +65,29 @@ class Reading:
         return asdict(self)
 
 
-def carrier_flux(model: IonChamberModel, name: str):
+def carrier_flux(model: IonChamberModel, carrier: ChargeCarrier):
     """The Nernst-Planck number flux of a carrier (1/m2/s), a ufl expression."""
-    c = model.concentrations()[name]
-    charge = model.gas.carrier(name).charge
-    velocity = -charge * model.mobilities[name] * ufl.grad(model.potential)
-    return -model.diffusivities[name] * ufl.grad(c) + c * velocity
+    density = carrier.post_processing_solution
+    mobility = model.mobilities[carrier.name]
+    diffusivity = model.diffusivities[carrier.name]
+    velocity = -carrier.charge * mobility * ufl.grad(model.potential)
+    return -diffusivity * ufl.grad(density) + density * velocity
 
 
 def charge_flux(model: IonChamberModel):
     """The net flux of charge, in units of the elementary charge (1/m2/s)."""
-    return sum(
-        carrier.charge * carrier_flux(model, carrier.name)
-        for carrier in model.gas.carriers
-    )
+    total = 0
+    for carrier in model.gas.carriers:
+        total = total + carrier.charge * carrier_flux(model, carrier)
+    return total
 
 
 def net_charge_density(model: IonChamberModel):
     """The net charge number density (1/m3), a ufl expression."""
-    c = model.concentrations()
-    return sum(carrier.charge * c[carrier.name] for carrier in model.gas.carriers)
+    total = 0
+    for carrier in model.gas.carriers:
+        total = total + carrier.charge * carrier.post_processing_solution
+    return total
 
 
 def _weight(model: IonChamberModel):
@@ -126,14 +130,16 @@ def generation_rate(model: IonChamberModel) -> float:
 
 def recombination_rate(model: IonChamberModel) -> float:
     """The loss rate of ion pairs to recombination in the whole gas volume (1/s)."""
-    c = model.concentrations()
-    losses = 0
-    for reaction, rate in zip(model.gas.reactions, model.rates):
-        if reaction.is_recombination:
-            losses += rate * np.prod([c[name] for name in reaction.reactants])
-    if isinstance(losses, int):
-        return 0.0
-    return assemble(_weight(model) * losses * ufl.dx(domain=model.mesh))
+    total = 0.0
+    for i, reaction in enumerate(model.gas.reactions):
+        if not reaction.is_recombination:
+            continue
+        # mass action: the rate coefficient times the density of every reactant
+        local_rate = model.rates[i]
+        for carrier in reaction.reactant:
+            local_rate = local_rate * carrier.post_processing_solution
+        total += assemble(_weight(model) * local_rate * ufl.dx(domain=model.mesh))
+    return total
 
 
 def space_charge_distortion(model: IonChamberModel) -> tuple[float, float]:

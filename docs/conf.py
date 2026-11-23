@@ -35,4 +35,6 @@ myst_heading_anchors = 3
 html_theme = "furo"
 html_title = "ion_chambers"
 html_extra_path = ["_extra"]  # the prototype report, copied as is
+html_static_path = ["_static"]  # the drawings and animations of the theory page
+html_css_files = ["mechanisms.css"]
 exclude_patterns = ["_build", "_extra"]

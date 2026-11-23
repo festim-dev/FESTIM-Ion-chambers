@@ -1,0 +1,91 @@
+/* Drawings and animations of the theory page. Colours follow the furo theme. */
+body {
+  --ic-ink: var(--color-foreground-primary);
+  --ic-muted: var(--color-foreground-secondary);
+  --ic-line: var(--color-background-border);
+  --ic-panel: var(--color-background-secondary);
+  --ic-mol: #9aa8b8;
+  --ic-beta: #d98a00;
+  --ic-pos: #d1453b;
+  --ic-neg: #2f6fd0;
+  --ic-exc: #8a5cd6;
+}
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --ic-mol: #5d6c80;
+    --ic-beta: #ffb938;
+    --ic-pos: #ff6f61;
+    --ic-neg: #62a2ff;
+    --ic-exc: #b48cff;
+  }
+}
+body[data-theme="dark"] {
+  --ic-mol: #5d6c80;
+  --ic-beta: #ffb938;
+  --ic-pos: #ff6f61;
+  --ic-neg: #62a2ff;
+  --ic-exc: #b48cff;
+}
+
+.ic-figure { max-width: 34rem; margin: 1rem 0; }
+.ic-figure svg, .ic-step svg { width: 100%; height: auto; display: block; }
+.ic-figure svg text, .ic-step svg text { font-family: inherit; }
+
+.ic-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+.ic-step { min-width: 0; font-size: 0.9em; }
+.ic-step svg { border-bottom: 1px solid var(--ic-line); }
+.ic-step strong { display: block; margin-top: 0.5rem; }
+@media (max-width: 40rem) {
+  .ic-steps { grid-template-columns: 1fr; }
+  .ic-step svg { max-width: 20rem; }
+}
+
+.ic-stage {
+  border: 1px solid var(--ic-line);
+  border-radius: 0.4rem;
+  background: var(--ic-panel);
+  margin: 1rem 0 0.5rem;
+  overflow: hidden;
+}
+.ic-stage canvas { display: block; width: 100%; background: var(--color-background-primary); }
+.ic-readouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--ic-line); }
+.ic-readout { padding: 0.6rem 0.9rem; min-width: 0; }
+.ic-readout + .ic-readout { border-left: 1px solid var(--ic-line); }
+.ic-label { display: block; font-size: 0.72em; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ic-muted); }
+.ic-value { font-family: var(--font-stack--monospace); font-variant-numeric: tabular-nums; font-size: 1.1em; }
+.ic-meter { height: 4px; background: var(--ic-line); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+.ic-meter span { display: block; height: 100%; width: 100%; background: var(--ic-beta); }
+.ic-controls {
+  display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; align-items: center;
+  padding: 0.6rem 0.9rem; border-top: 1px solid var(--ic-line); font-size: 0.9em;
+}
+.ic-group { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+.ic-group .ic-label { margin-right: 0.3rem; }
+.ic-controls button {
+  font: inherit; color: var(--ic-ink); background: var(--color-background-primary);
+  border: 1px solid var(--ic-line); border-radius: 0.3rem; padding: 0.25rem 0.8rem; cursor: pointer;
+}
+.ic-controls button:hover { border-color: var(--ic-muted); }
+.ic-controls button:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 2px; }
+.ic-controls button[aria-pressed="true"] {
+  background: var(--color-brand-primary); border-color: var(--color-brand-primary);
+  color: var(--color-background-primary);
+}
+.ic-slider { display: flex; flex-direction: column; flex: 1 1 14rem; min-width: 0; color: var(--ic-muted); }
+.ic-slider output { font-family: var(--font-stack--monospace); color: var(--ic-ink); }
+.ic-slider input { width: 100%; accent-color: var(--ic-beta); }
+.ic-status { color: var(--ic-muted); flex: 1 1 12rem; min-width: 0; }
+
+.ic-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.85em; color: var(--ic-muted); margin-bottom: 1rem; }
+.ic-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ic-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; display: inline-block; }
+.ic-ring { width: 0.55rem; height: 0.55rem; border-radius: 50%; display: inline-block; border: 2px solid var(--ic-exc); }
+
+#ic-track { height: 320px; }
+#ic-wall-canvas { height: 280px; }
+#ic-chamber-canvas { height: 400px; }
+@media (max-width: 40rem) {
+  #ic-track { height: 260px; }
+  #ic-wall-canvas { height: 240px; }
+  #ic-chamber-canvas { height: 320px; }
+}

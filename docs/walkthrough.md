@@ -454,10 +454,22 @@ figure, axes = plt.subplots(2, 1, figsize=(8, 4), sharex=True, height_ratios=[2,
 axes[0].plot(distance * 1e3, energy_along_track / 1e3)
 axes[0].set_ylabel("energy of the beta (keV)")
 
-axes[1].plot(pair_positions * 1e3, np.full(number_of_pairs, 0.3), "o",
-             color="tab:red", markersize=2, label="positive ions")
-axes[1].plot(pair_positions * 1e3, np.full(number_of_pairs, -0.3), "o",
-             color="tab:blue", markersize=2, label="electrons")
+axes[1].plot(
+    pair_positions * 1e3,
+    np.full(number_of_pairs, 0.3),
+    "o",
+    color="tab:red",
+    markersize=2,
+    label="positive ions",
+)
+axes[1].plot(
+    pair_positions * 1e3,
+    np.full(number_of_pairs, -0.3),
+    "o",
+    color="tab:blue",
+    markersize=2,
+    label="electrons",
+)
 axes[1].set_ylim(-1, 1)
 axes[1].set_yticks([])
 axes[1].set_xlabel("distance along the track (mm)")
@@ -500,8 +512,10 @@ for i in range(len(track_lengths)):
     end_y = track_lengths[i] * ray_directions[i, 1]
     colour = "tab:red" if reaches_wall[i] else "0.6"
     plt.plot(
-        [decay_point[0, 0] * 1e3, end_x * 1e3], [0, end_y * 1e3],
-        color=colour, linewidth=0.6,
+        [decay_point[0, 0] * 1e3, end_x * 1e3],
+        [0, end_y * 1e3],
+        color=colour,
+        linewidth=0.6,
     )
 angle = np.linspace(-0.1, 0.1, 100)
 plt.plot(b * np.cos(angle) * 1e3, b * np.sin(angle) * 1e3, "k", linewidth=3)
@@ -746,7 +760,9 @@ expected_current = (
 )
 print(f"ideal x wall x collection  {expected_current:.3e} A")
 print(f"chamber current            {current.value:.3e} A")
-print(f"difference                 {(1 - current.value / expected_current) * 100:.1f} %")
+print(
+    f"difference                 {(1 - current.value / expected_current) * 100:.1f} %"
+)
 ```
 
 ```text
@@ -1154,7 +1170,9 @@ plt.show()
 print(f"signal at 1 Ci/m3          {signal_current:.2e} A")
 for run, background in zip(runs, background_currents):
     share = background / signal_current
-    print(f"background after run {run}    {background:.2e} A  ({share:.1e} of the signal)")
+    print(
+        f"background after run {run}    {background:.2e} A  ({share:.1e} of the signal)"
+    )
 ```
 
 ![The background current after each run](images/walkthrough_background_current.png)

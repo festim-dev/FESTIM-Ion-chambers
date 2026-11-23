@@ -181,21 +181,12 @@ class CoaxialChamber(Geometry):
         """The gas volume (m3)."""
         return np.pi * (self.can_radius**2 - self.rod_radius**2) * self.length
 
-    def create_mesh(
-        self, radial_cells: int, axial_cells: int, cap_refinement: float = 1.6
-    ) -> F.Mesh:
-        """Creates a triangular (r, z) mesh, graded towards the rod and the caps.
-
-        The radial spacing grows in proportion to r, which keeps the product of drift
-        speed and cell size uniform in the 1/r field. The axial spacing is smallest
-        at the end caps.
+    def create_mesh(self, radial_cells: int, axial_cells: int) -> F.Mesh:
+        """Creates a triangular (r, z) mesh of the gas, with cells of equal size.
 
         Args:
             radial_cells: the number of cells from the rod to the can
-            axial_cells: the number of cells from one end cap to the other. 0.6 to 1
-                times ``radial_cells`` is a reasonable start, more for a long chamber.
-            cap_refinement: how strongly the mesh is refined towards the end caps (0
-                for a uniform axial spacing)
+            axial_cells: the number of cells from one end cap to the other
 
         Returns:
             the mesh, in cylindrical coordinates
@@ -210,26 +201,13 @@ class CoaxialChamber(Geometry):
             if value <= 0:
                 raise ValueError(f"{name} must be positive, not {value}")
 
-        # a unit rectangle, then mapped onto the gas volume
         mesh = dmesh.create_rectangle(
             MPI.COMM_WORLD,
-            [[0, -1], [1, 1]],
+            [[self.rod_radius, 0.0], [self.can_radius, self.length]],
             [radial_cells, axial_cells],
             dmesh.CellType.triangle,
             diagonal=dmesh.DiagonalType.crossed,
         )
-        x = mesh.geometry.x
-        s = x[:, 0].copy()  # 0 on the rod, 1 on the can
-        t = x[:, 1].copy()  # -1 on the bottom cap, 1 on the top cap
-
-        x[:, 0] = self.rod_radius * (self.can_radius / self.rod_radius) ** s
-
-        if cap_refinement > 0:
-            stretched = np.tanh(cap_refinement * t) / np.tanh(cap_refinement)
-        else:
-            stretched = t
-        x[:, 1] = 0.5 * self.length * (1 + stretched)
-
         return F.Mesh(mesh, coordinate_system="cylindrical")
 
     def is_anode(self, x: np.ndarray) -> np.ndarray:

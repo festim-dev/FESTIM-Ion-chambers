@@ -1,8 +1,14 @@
 """The case the original prototype was run for: a 1 L coaxial chamber in room air.
 
-The regression tests in test_model.py pin currents computed with exactly these
-numbers, so do not change them.
+The regression tests pin currents computed with exactly these numbers and this mesh,
+so do not change them.
 """
+
+from mpi4py import MPI
+
+import festim as F
+import numpy as np
+from dolfinx import mesh as dmesh
 
 import ion_chambers as ic
 
@@ -40,6 +46,27 @@ def reference_chamber() -> ic.CoaxialChamber:
     )
 
 
+def prototype_mesh(
+    chamber: ic.CoaxialChamber, radial_cells: int, axial_cells: int
+) -> F.Mesh:
+    """The graded mesh of the original prototype, which the pinned currents were
+    computed on: the radial spacing grows in proportion to r and the axial spacing
+    is smallest at the end caps."""
+    mesh = dmesh.create_rectangle(
+        MPI.COMM_WORLD,
+        [[0, -1], [1, 1]],
+        [radial_cells, axial_cells],
+        dmesh.CellType.triangle,
+        diagonal=dmesh.DiagonalType.crossed,
+    )
+    x = mesh.geometry.x
+    s = x[:, 0].copy()  # 0 on the rod, 1 on the can
+    t = x[:, 1].copy()  # -1 on the bottom cap, 1 on the top cap
+    x[:, 0] = chamber.rod_radius * (chamber.can_radius / chamber.rod_radius) ** s
+    x[:, 1] = 0.5 * chamber.length * (1 + np.tanh(1.6 * t) / np.tanh(1.6))
+    return F.Mesh(mesh, coordinate_system="cylindrical")
+
+
 def solve_potential(
     chamber: ic.CoaxialChamber,
     radial_cells: int,
@@ -48,8 +75,8 @@ def solve_potential(
 ) -> ic.ElectrostaticProblem:
     """The potential of a chamber with its anode at ``bias`` and a grounded cathode."""
     electrostatics = ic.ElectrostaticProblem()
-    electrostatics.mesh = chamber.create_mesh(
-        radial_cells=radial_cells, axial_cells=axial_cells
+    electrostatics.mesh = prototype_mesh(
+        chamber, radial_cells=radial_cells, axial_cells=axial_cells
     )
     electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
     electrostatics.boundary_conditions = [

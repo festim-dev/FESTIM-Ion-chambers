@@ -51,11 +51,8 @@ The 1 L chamber used for the [prototype results](../results.md) is defined in
 
 ### Mesh
 
-The mesh is graded so that cells are small where the field is strong: the radial
-spacing grows in proportion to r, and the axial spacing is refined towards the end
-caps. `radial_cells` is the number of cells from the rod to the can and `axial_cells`
-the number from one end cap to the other. For the axial count, 0.6 to 1 times the
-radial count is a reasonable start, more for a long chamber.
+`radial_cells` is the number of cells from the rod to the can and `axial_cells` the
+number from one end cap to the other. The cells are of equal size in each direction.
 
 ## Using your own mesh
 

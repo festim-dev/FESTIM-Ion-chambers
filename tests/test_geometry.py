@@ -149,6 +149,13 @@ def test_mesh_spans_the_gas_axially(chamber):
     assert np.allclose([z.min(), z.max()], [0.0, chamber.length])
 
 
+def test_mesh_cells_are_equally_spaced_radially(chamber):
+    """The radial positions of the nodes of the cell corners are equally spaced."""
+    r = chamber.create_mesh(radial_cells=10, axial_cells=6).mesh.geometry.x[:, 0]
+    corners = np.unique(np.round(r, 12))[::2]
+    assert np.allclose(np.diff(corners), (0.05 - 1.5e-3) / 10)
+
+
 def test_mesh_has_the_requested_number_of_cells(chamber):
     """The mesh has exactly radial_cells by axial_cells quadrilaterals, each split
     into four triangles."""

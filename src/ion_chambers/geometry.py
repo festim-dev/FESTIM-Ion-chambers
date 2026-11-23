@@ -1,8 +1,8 @@
 """Chamber geometries.
 
-A geometry provides the mesh of the gas volume, the two electrode surfaces, and the
-distance a beta can travel before it hits a wall. A new shape is a new subclass of
-:class:`Geometry`.
+A geometry knows where the walls of a chamber are, which the wall-loss calculation
+needs. :class:`CoaxialChamber` also creates its own mesh and subdomains. A mesh made
+with another tool is used as in FESTIM, without a geometry: see the documentation.
 """
 
 from __future__ import annotations
@@ -18,19 +18,13 @@ from scipy.optimize import brentq
 
 
 class Geometry(ABC):
-    """Base class of the chamber geometries.
+    """Base class of the chamber geometries: what the wall-loss calculation needs.
 
     Attributes:
-        gas: the gas volume, a :class:`festim.VolumeSubdomain` covering the whole mesh
-        anode: the surface of the anode, a :class:`festim.SurfaceSubdomain`
-        cathode: the surface of the cathode, a :class:`festim.SurfaceSubdomain`
         dimensions: the numbers that define the shape, as a tuple. Two geometries with
             the same dimensions share the cached wall-loss calculation.
     """
 
-    gas: F.VolumeSubdomain
-    anode: F.SurfaceSubdomain
-    cathode: F.SurfaceSubdomain
     dimensions: tuple
 
     @abstractmethod

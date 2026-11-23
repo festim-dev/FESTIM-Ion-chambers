@@ -19,9 +19,9 @@ threshold.
 1. **Carrier gases.** Worked examples for N₂ and Ar with electron transport that depends
    on E/N, and impurities that capture electrons. The model already accepts such
    coefficients; what is missing is vetted data and a choice of source for it.
-2. **Geometry from a mesh file.** A geometry that reads a mesh and its electrode tags
-   from XDMF, and a wall-loss Monte Carlo that traces rays against the mesh boundary
-   instead of analytic cylinders.
+2. **Wall losses from a mesh.** A mesh and its tags can already be read from a file
+   and used in both problems. What is missing is a wall-loss Monte Carlo that traces
+   rays against the mesh boundary instead of analytic cylinders.
 3. **The real 1 L monitor.** Its geometry, then the first comparison with the N₂
    calibration data.
 4. **Space-charge coupling.** A class that iterates between the transport problem and

@@ -1,7 +1,9 @@
 # Geometry
 
-A geometry provides the mesh of the gas volume, the subdomains of the gas and of the
-two electrodes, and the distance a beta can travel before it hits a wall.
+The problems need a `festim.Mesh` of the gas, a volume subdomain for the gas and a
+surface subdomain for each electrode. There are two ways to get them: let
+{class}`~ion_chambers.CoaxialChamber` create them, or bring
+[your own mesh](#using-your-own-mesh).
 
 ## Coaxial chamber
 
@@ -55,15 +57,77 @@ caps. `radial_cells` is the number of cells from the rod to the can and `axial_c
 the number from one end cap to the other. For the axial count, 0.6 to 1 times the
 radial count is a reasonable start, more for a long chamber.
 
+## Using your own mesh
+
+A mesh made with another tool is used exactly as in FESTIM. Read the mesh and its
+cell and facet tags, for instance with
+[io4dolfinx](https://github.com/scientificcomputing/io4dolfinx), and create one
+subdomain for each tag you need. A subdomain only needs the id that the tag has in
+the mesh, with no locator.
+
+```python
+from mpi4py import MPI
+
+import festim as F
+import io4dolfinx
+
+import ion_chambers as ic
+
+# the ids given to the gas and to the electrodes when the mesh was made
+GAS_ID = 7
+ANODE_ID = 11
+CATHODE_ID = 12
+
+mesh = io4dolfinx.read_mesh("chamber.bp", MPI.COMM_WORLD)
+cell_tags = io4dolfinx.read_meshtags("chamber.bp", mesh, meshtag_name="cells")
+facet_tags = io4dolfinx.read_meshtags("chamber.bp", mesh, meshtag_name="facets")
+
+gas_volume = F.VolumeSubdomain(id=GAS_ID, material=None)
+anode = F.SurfaceSubdomain(id=ANODE_ID)
+cathode = F.SurfaceSubdomain(id=CATHODE_ID)
+
+electrostatics = ic.ElectrostaticProblem()
+electrostatics.mesh = F.Mesh(mesh, coordinate_system="cylindrical")
+electrostatics.volume_meshtags = cell_tags
+electrostatics.facet_meshtags = facet_tags
+electrostatics.subdomains = [gas_volume, anode, cathode]
+electrostatics.boundary_conditions = [
+    ic.FixedPotentialBC(subdomain=anode, value=500.0),
+    ic.FixedPotentialBC(subdomain=cathode, value=0.0),
+]
+electrostatics.initialise()
+electrostatics.run()
+```
+
+The transport problem takes the mesh, the tags and the electrodes from the
+electrostatic problem, so nothing more is needed there. Use your own surface
+subdomains in the exports, for instance `ic.ChamberCurrent(surface=anode)`.
+
+What the mesh must satisfy:
+
+- It is 2D and made of triangles. For an axisymmetric chamber the coordinates are
+  (r, z) and the coordinate system is `"cylindrical"`.
+- Every cell belongs to the gas: the electrostatic problem has one volume subdomain.
+- Every electrode has a facet tag and a `FixedPotentialBC`. Facets without a boundary
+  condition, tagged or not, are insulators.
+
+### Wall losses with your own mesh
+
+The wall-loss calculation does not use the mesh. It needs a
+{class}`~ion_chambers.Geometry` that knows where the walls are, given to the source as
+`ic.TritiumInGas(activity=..., geometry=...)`. With your own mesh you can:
+
+- leave `geometry` out, which ignores wall losses (about 1 % for the 1 L reference
+  chamber in air at 1 atm, more for small chambers or low pressure);
+- pass a `CoaxialChamber` of the same dimensions, if your chamber is close to one;
+- write a subclass of `Geometry` for your shape.
+
 ## Adding a geometry
 
-A new shape is a subclass of {class}`~ion_chambers.Geometry` that provides the `gas`,
-`anode` and `cathode` subdomains and implements `create_mesh`, `distance_to_wall` and
-`wall_clustered_grid`.
-
-The problems themselves only need a `festim.Mesh` and FESTIM subdomains, so a mesh
-from another source can be used directly. The geometry class is what the wall-loss
-calculation needs.
+A new shape is a subclass of {class}`~ion_chambers.Geometry`. What the wall-loss
+calculation needs from it is `dimensions`, `distance_to_wall` and
+`wall_clustered_grid`. A geometry can also create its own mesh and subdomains, as
+`CoaxialChamber` does, but it does not have to.
 
 :::{admonition} Limitations
 :class: note
@@ -71,5 +135,6 @@ calculation needs.
   and the 20 cc wire cage are not modelled yet.
 - The numerical helpers assume a 2D triangular mesh, so a 3D geometry needs more than
   a new subclass.
-- Reading a mesh from a file is planned: see the [roadmap](../roadmap.md).
+- Wall losses are not computed from a mesh: a shape without a `Geometry` class runs
+  without them. See the [roadmap](../roadmap.md).
 :::

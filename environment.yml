@@ -8,6 +8,7 @@ dependencies:
   - python=3.12
   - festim=2.2               # drift terms (ElectromigrationTerm), OutflowBC, GenericReaction
   - fenics-dolfinx=0.11
+  - io4dolfinx             # reading a mesh and its tags from a file
   - numpy>=2               # np.trapezoid
   - scipy                  # interpolation, brentq
   - matplotlib             # plots

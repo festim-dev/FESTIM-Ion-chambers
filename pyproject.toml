@@ -58,6 +58,3 @@ section-order = [
 [tool.ruff.lint.isort.sections]
 mpi = ["mpi4py", "petsc4py"]
 
-[tool.ruff.lint.per-file-ignores]
-# the FESTIM check has to run before the modules that need FESTIM 2.2 are imported
-"src/ion_chambers/__init__.py" = ["E402"]

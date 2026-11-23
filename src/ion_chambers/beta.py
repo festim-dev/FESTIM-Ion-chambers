@@ -13,12 +13,9 @@ wall-loss efficiency f in [0, 1], is computed by a straight-track Monte Carlo:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 
-if TYPE_CHECKING:
-    from ion_chambers.geometry import Geometry
+from ion_chambers.geometry import Geometry
 
 Q_BETA = 18.591e3
 """Endpoint energy of the tritium beta spectrum (eV)."""

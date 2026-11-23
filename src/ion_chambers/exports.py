@@ -22,10 +22,12 @@ from scifem import assemble_scalar
 
 from ion_chambers.constants import E_CHARGE
 from ion_chambers.electrostatic_problem import ElectrostaticProblem, FixedPotentialBC
+from ion_chambers.gas import ChargeCarrier
 
+# The transport problem imports this module, so importing it here at runtime would be
+# a circular import. It is only needed for the annotations.
 if TYPE_CHECKING:
     from ion_chambers.charge_transport_problem import ChargeTransportProblem
-    from ion_chambers.gas import ChargeCarrier
 
 
 def integration_weight(problem: ChargeTransportProblem):

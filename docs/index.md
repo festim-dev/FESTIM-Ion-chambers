@@ -9,6 +9,9 @@ charges out before they recombine, and the current that flows is the reading. Th
 package solves for the charge densities in the chamber and predicts that current from
 the geometry, the gas, the bias and the tritium activity.
 
+The [theory](theory.md) page shows how a chamber works, one mechanism at a time, and
+the [walkthrough](walkthrough.md) builds a complete model step by step.
+
 It is built on FESTIM and used like it: an `ElectrostaticProblem` for the electric
 potential and a `ChargeTransportProblem` for the charge carriers, each with a mesh,
 subdomains, boundary conditions and exports.
@@ -41,6 +44,7 @@ with measurements**: the real vessel geometry and the carrier gases of the exper
 
 installation
 quickstart
+walkthrough
 example_air
 ```
 

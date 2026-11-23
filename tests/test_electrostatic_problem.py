@@ -40,25 +40,33 @@ def test_potential_is_none_before_initialise():
 
 def test_potential_is_the_solution(long_chamber):
     """After a run, potential is the solution function u."""
-    electrostatics = solve_potential(long_chamber, resolution=10, bias=300.0)
+    electrostatics = solve_potential(
+        long_chamber, radial_cells=10, axial_cells=10, bias=300.0
+    )
     assert electrostatics.potential is electrostatics.u
 
 
 def test_potential_equals_the_bias_on_the_anode(long_chamber):
     """The largest value of the potential is the bias, reached on the anode."""
-    electrostatics = solve_potential(long_chamber, resolution=20, bias=300.0)
+    electrostatics = solve_potential(
+        long_chamber, radial_cells=20, axial_cells=20, bias=300.0
+    )
     assert np.isclose(electrostatics.u.x.array.max(), 300.0)
 
 
 def test_potential_is_zero_on_the_cathode(long_chamber):
     """The smallest value of the potential is zero, reached on the cathode."""
-    electrostatics = solve_potential(long_chamber, resolution=20, bias=300.0)
+    electrostatics = solve_potential(
+        long_chamber, radial_cells=20, axial_cells=20, bias=300.0
+    )
     assert np.isclose(electrostatics.u.x.array.min(), 0.0, atol=1e-9)
 
 
 def test_field_at_mid_height_is_that_of_an_infinite_coax(long_chamber):
     """Far from the end caps the field matches V / (r ln(R/a)) within 0.2%."""
-    electrostatics = solve_potential(long_chamber, resolution=40, bias=300.0)
+    electrostatics = solve_potential(
+        long_chamber, radial_cells=40, axial_cells=40, bias=300.0
+    )
     strength, _ = cell_field_length(electrostatics.u)
 
     mesh = electrostatics.mesh.mesh
@@ -71,7 +79,9 @@ def test_field_at_mid_height_is_that_of_an_infinite_coax(long_chamber):
 
 def test_cell_length_is_bounded_by_the_cell_size(long_chamber):
     """The cell length along the field never exceeds twice the longest cell edge."""
-    electrostatics = solve_potential(long_chamber, resolution=10, bias=300.0)
+    electrostatics = solve_potential(
+        long_chamber, radial_cells=10, axial_cells=10, bias=300.0
+    )
     _, length = cell_field_length(electrostatics.u)
     mesh = electrostatics.mesh.mesh
     vertices = mesh.geometry.x[:, :2][mesh.geometry.dofmaps[0]]
@@ -83,7 +93,7 @@ def test_uniform_charge_between_grounded_electrodes(long_chamber):
     """A uniform charge between grounded electrodes of an infinite coax gives the
     analytic potential at mid-height, within 1%."""
     charge_density = 1e-6  # C/m3
-    mesh = long_chamber.create_mesh(resolution=40)
+    mesh = long_chamber.create_mesh(radial_cells=40, axial_cells=40)
     electrostatics = ic.ElectrostaticProblem(
         mesh=mesh,
         subdomains=[long_chamber.gas, long_chamber.anode, long_chamber.cathode],
@@ -121,7 +131,7 @@ def test_potential_export_writes_a_file(long_chamber, tmp_path):
     """A PotentialExport writes the potential to the file it was given."""
     filename = tmp_path / "potential.bp"
     electrostatics = ic.ElectrostaticProblem(
-        mesh=long_chamber.create_mesh(resolution=6),
+        mesh=long_chamber.create_mesh(radial_cells=6, axial_cells=6),
         subdomains=[long_chamber.gas, long_chamber.anode, long_chamber.cathode],
         boundary_conditions=[
             ic.FixedPotentialBC(subdomain=long_chamber.anode, value=100.0),
@@ -137,7 +147,7 @@ def test_potential_export_writes_a_file(long_chamber, tmp_path):
 def test_rejects_exports_of_another_type(long_chamber):
     """An export that is not a PotentialExport raises a TypeError at initialise."""
     electrostatics = ic.ElectrostaticProblem(
-        mesh=long_chamber.create_mesh(resolution=6),
+        mesh=long_chamber.create_mesh(radial_cells=6, axial_cells=6),
         subdomains=[long_chamber.gas, long_chamber.anode, long_chamber.cathode],
         boundary_conditions=[
             ic.FixedPotentialBC(subdomain=long_chamber.anode, value=100.0),

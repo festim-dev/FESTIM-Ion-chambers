@@ -17,7 +17,7 @@ def chamber() -> ic.CoaxialChamber:
 @pytest.fixture
 def coarse_electrostatics(chamber) -> ic.ElectrostaticProblem:
     """The potential of the reference chamber at 500 V on a coarse mesh, solved."""
-    return solve_potential(chamber, resolution=30)
+    return solve_potential(chamber, radial_cells=30, axial_cells=18)
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ def reference_results() -> dict[str, ic.ChamberQuantity]:
     }
     tritium = ic.TritiumInGas(activity=0.0, geometry=chamber)
     transport = ic.ChargeTransportProblem(
-        electrostatic_problem=solve_potential(chamber, resolution=60),
+        electrostatic_problem=solve_potential(chamber, radial_cells=60, axial_cells=36),
         gas=air(),
         ionisation_sources=[tritium],
         exports=list(quantities.values()),

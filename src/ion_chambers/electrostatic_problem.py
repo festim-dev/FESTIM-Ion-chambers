@@ -82,7 +82,9 @@ class ElectrostaticProblem(F.ProblemBase):
             )
 
             electrostatics = ic.ElectrostaticProblem()
-            electrostatics.mesh = chamber.create_mesh(resolution=120)
+            electrostatics.mesh = chamber.create_mesh(
+                radial_cells=120, axial_cells=72
+            )
             electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
             electrostatics.boundary_conditions = [
                 ic.FixedPotentialBC(subdomain=chamber.anode, value=500.0),

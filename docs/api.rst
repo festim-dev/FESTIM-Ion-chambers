@@ -23,7 +23,7 @@ Geometry
    :members:
 
 .. autoclass:: ion_chambers.CoaxialChamber
-   :members: from_volume, from_aspect_ratio, volume, default_axial_cells, create_mesh,
+   :members: from_volume, from_aspect_ratio, volume, create_mesh,
       is_anode, is_cathode
 
 Gas

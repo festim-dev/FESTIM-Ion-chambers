@@ -43,7 +43,9 @@ def run_coarse_problem(quantity, gas=None, bias=500.0, activity=3.7e4) -> float:
         # the quantity needs the anode of this chamber
         quantity = getattr(ic, quantity)(surface=chamber.anode)
     transport = ic.ChargeTransportProblem(
-        electrostatic_problem=solve_potential(chamber, resolution=30, bias=bias),
+        electrostatic_problem=solve_potential(
+            chamber, radial_cells=30, axial_cells=18, bias=bias
+        ),
         gas=gas or air(),
         ionisation_sources=[ic.TritiumInGas(activity=activity)],
         exports=[quantity],
@@ -257,7 +259,9 @@ def test_thinner_gas_loses_more_to_the_walls(chamber):
         gas.density = density
         wall_efficiency = ic.WallEfficiency()
         transport = ic.ChargeTransportProblem(
-            electrostatic_problem=solve_potential(chamber, resolution=30),
+            electrostatic_problem=solve_potential(
+                chamber, radial_cells=30, axial_cells=18
+            ),
             gas=gas,
             ionisation_sources=[
                 ic.TritiumInGas(activity=3.7e4, geometry=chamber, n_rays=300)
@@ -309,7 +313,7 @@ def test_gas_without_negative_ions_collects_nearly_everything():
     current = ic.ChamberCurrent(surface=chamber.anode)
     ideal = ic.IdealCurrent()
     transport = ic.ChargeTransportProblem(
-        electrostatic_problem=solve_potential(chamber, resolution=30),
+        electrostatic_problem=solve_potential(chamber, radial_cells=30, axial_cells=18),
         gas=electron_ion_gas(),
         ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
         exports=[current, ideal],

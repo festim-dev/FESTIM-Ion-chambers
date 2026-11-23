@@ -62,13 +62,6 @@ def test_rejects_insulator_covering_the_caps():
         )
 
 
-def test_dimensions_ignore_the_mesh_options():
-    """Chambers that differ only in mesh options have the same dimensions, so they
-    share the stored wall-loss calculation."""
-    a = ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=10)
-    assert a.dimensions == ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=20).dimensions
-
-
 def test_gas_is_a_festim_volume_subdomain(chamber):
     """The gas of a chamber is a FESTIM volume subdomain."""
     assert isinstance(chamber.gas, F.VolumeSubdomain)
@@ -87,7 +80,7 @@ def test_electrodes_have_different_ids(chamber):
 
 def test_mesh_is_a_cylindrical_festim_mesh(chamber):
     """create_mesh returns a FESTIM mesh in cylindrical coordinates."""
-    mesh = chamber.create_mesh(4)
+    mesh = chamber.create_mesh(radial_cells=4, axial_cells=2)
     assert isinstance(mesh, F.Mesh) and str(mesh.coordinate_system) == "cylindrical"
 
 
@@ -146,21 +139,20 @@ def test_distance_to_wall(chamber, direction, expected):
 
 def test_mesh_spans_the_gas_radially(chamber):
     """The mesh runs from the rod radius to the can radius."""
-    r = chamber.create_mesh(10).mesh.geometry.x[:, 0]
+    r = chamber.create_mesh(radial_cells=10, axial_cells=6).mesh.geometry.x[:, 0]
     assert np.allclose([r.min(), r.max()], [1.5e-3, 0.05])
 
 
 def test_mesh_spans_the_gas_axially(chamber):
     """The mesh runs from one end cap to the other."""
-    z = chamber.create_mesh(10).mesh.geometry.x[:, 1]
+    z = chamber.create_mesh(radial_cells=10, axial_cells=6).mesh.geometry.x[:, 1]
     assert np.allclose([z.min(), z.max()], [0.0, chamber.length])
 
 
-def test_axial_cells_override():
-    """Setting axial_cells gives a mesh with exactly that many cells along z."""
-    geometry = ic.CoaxialChamber(1e-3, 0.05, 0.1, axial_cells=7)
-    mesh = geometry.create_mesh(5).mesh
-    # a crossed rectangle mesh has four triangles per quadrilateral
+def test_mesh_has_the_requested_number_of_cells(chamber):
+    """The mesh has exactly radial_cells by axial_cells quadrilaterals, each split
+    into four triangles."""
+    mesh = chamber.create_mesh(radial_cells=5, axial_cells=7).mesh
     assert mesh.topology.index_map(2).size_local == 4 * 5 * 7
 
 
@@ -168,3 +160,16 @@ def test_wall_clustered_grid_spans_the_gas(chamber):
     """The wall-loss sampling grid starts and ends on the walls in both directions."""
     r, z = chamber.wall_clustered_grid(11, 13)
     assert np.allclose([r[0], r[-1], z[0], z[-1]], [1.5e-3, 0.05, 0, chamber.length])
+
+
+@pytest.mark.parametrize("cells", [2.0, "10", None, True])
+def test_create_mesh_rejects_cell_counts_that_are_not_integers(chamber, cells):
+    """A number of cells that is not an integer raises a TypeError."""
+    with pytest.raises(TypeError, match="radial_cells must be an int"):
+        chamber.create_mesh(radial_cells=cells, axial_cells=5)
+
+
+def test_create_mesh_rejects_zero_cells(chamber):
+    """A number of cells that is not positive raises a ValueError."""
+    with pytest.raises(ValueError, match="axial_cells must be positive"):
+        chamber.create_mesh(radial_cells=5, axial_cells=0)

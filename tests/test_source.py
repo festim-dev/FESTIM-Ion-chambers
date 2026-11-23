@@ -32,7 +32,9 @@ def test_without_geometry_the_efficiency_is_one(chamber):
     """A source created without a geometry ignores wall losses: the efficiency is
     exactly one everywhere."""
     source = ic.TritiumInGas(activity=1.0)
-    source.create_pair_production(chamber.create_mesh(6), air())
+    source.create_pair_production(
+        chamber.create_mesh(radial_cells=6, axial_cells=3), air()
+    )
     assert np.all(source.efficiency.x.array == 1.0)
 
 
@@ -40,7 +42,9 @@ def test_wall_loss_efficiency_stays_between_zero_and_one(chamber):
     """The projected wall-loss efficiency stays within its physical bounds of 0 and
     1."""
     source = ic.TritiumInGas(activity=1.0, geometry=chamber, n_rays=200)
-    source.create_pair_production(chamber.create_mesh(6), air())
+    source.create_pair_production(
+        chamber.create_mesh(radial_cells=6, axial_cells=3), air()
+    )
     values = source.efficiency.x.array
     assert values.min() >= 0.0 and values.max() <= 1.0
 
@@ -49,14 +53,18 @@ def test_changing_the_activity_updates_the_created_source(chamber):
     """Setting a new activity on a source that is part of a problem updates its rate
     constant without a rebuild."""
     source = ic.TritiumInGas(activity=1.0)
-    source.create_pair_production(chamber.create_mesh(6), air())
+    source.create_pair_production(
+        chamber.create_mesh(radial_cells=6, axial_cells=3), air()
+    )
     source.activity = 10.0
     assert np.isclose(source._rate.value, 10.0 * ic.beta.ion_pairs_per_decay(33.97))
 
 
 def test_lumped_projection_reproduces_a_constant(chamber):
     """Projecting a constant function gives that constant at every node."""
-    V1 = fem.functionspace(chamber.create_mesh(8).mesh, ("Lagrange", 1))
+    V1 = fem.functionspace(
+        chamber.create_mesh(radial_cells=8, axial_cells=4).mesh, ("Lagrange", 1)
+    )
     values = lumped_projection(V1, lambda r, z: np.full_like(r, 3.0))
     assert np.allclose(values, 3.0)
 
@@ -67,7 +75,7 @@ def test_lumped_projection_conserves_the_integral_of_a_thin_layer(chamber):
     import ufl
     from scifem import assemble_scalar
 
-    mesh = chamber.create_mesh(8)
+    mesh = chamber.create_mesh(radial_cells=8, axial_cells=4)
     V1 = fem.functionspace(mesh.mesh, ("Lagrange", 1))
     thickness = 5e-3
     R = chamber.can_radius

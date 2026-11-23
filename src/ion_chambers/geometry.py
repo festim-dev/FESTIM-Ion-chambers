@@ -34,14 +34,6 @@ class Geometry(ABC):
     dimensions: tuple
 
     @abstractmethod
-    def create_mesh(self, resolution: int) -> F.Mesh:
-        """Creates the mesh of the gas volume.
-
-        Args:
-            resolution: the number of cells across the electrode gap
-        """
-
-    @abstractmethod
     def distance_to_wall(self, points: np.ndarray, directions: np.ndarray):
         """The straight-line distance from each point to the nearest wall hit.
 
@@ -85,10 +77,6 @@ class CoaxialChamber(Geometry):
         can_radius: the inner radius of the can (m)
         length: the inner length of the can (m)
         feedthrough_gap: the radial width of the insulating rings (m)
-        axial_cells: the number of mesh cells along z. ``None`` derives it from the
-            radial resolution.
-        cap_refinement: how strongly the mesh is refined towards the end caps (0 for a
-            uniform mesh)
 
     Attributes:
         rod_radius: the radius of the anode rod (m)
@@ -107,8 +95,6 @@ class CoaxialChamber(Geometry):
         can_radius: float,
         length: float,
         feedthrough_gap: float = 3e-3,
-        axial_cells: int | None = None,
-        cap_refinement: float = 1.6,
     ) -> None:
         dimensions = {
             "rod_radius": rod_radius,
@@ -134,8 +120,6 @@ class CoaxialChamber(Geometry):
         self.can_radius = can_radius
         self.length = length
         self.feedthrough_gap = feedthrough_gap
-        self.axial_cells = axial_cells
-        self.cap_refinement = cap_refinement
 
         self.dimensions = (rod_radius, can_radius, length)
         # The gas has no material here: the transport problem defines the transport
@@ -146,7 +130,11 @@ class CoaxialChamber(Geometry):
 
     @classmethod
     def from_volume(
-        cls, volume: float, rod_radius: float, can_radius: float, **kwargs
+        cls,
+        volume: float,
+        rod_radius: float,
+        can_radius: float,
+        feedthrough_gap: float = 3e-3,
     ) -> CoaxialChamber:
         """A chamber of given gas volume and radii; the length follows.
 
@@ -154,14 +142,23 @@ class CoaxialChamber(Geometry):
             volume: the gas volume (m3)
             rod_radius: the radius of the anode rod (m)
             can_radius: the inner radius of the can (m)
-            **kwargs: passed on to :class:`CoaxialChamber`
+            feedthrough_gap: the radial width of the insulating rings (m)
         """
         length = volume / (np.pi * (can_radius**2 - rod_radius**2))
-        return cls(rod_radius, can_radius, length, **kwargs)
+        return cls(
+            rod_radius=rod_radius,
+            can_radius=can_radius,
+            length=length,
+            feedthrough_gap=feedthrough_gap,
+        )
 
     @classmethod
     def from_aspect_ratio(
-        cls, volume: float, rod_radius: float, aspect_ratio: float, **kwargs
+        cls,
+        volume: float,
+        rod_radius: float,
+        aspect_ratio: float,
+        feedthrough_gap: float = 3e-3,
     ) -> CoaxialChamber:
         """A chamber of given gas volume and length-to-diameter ratio.
 
@@ -169,7 +166,7 @@ class CoaxialChamber(Geometry):
             volume: the gas volume (m3)
             rod_radius: the radius of the anode rod (m)
             aspect_ratio: the length divided by the diameter of the can
-            **kwargs: passed on to :class:`CoaxialChamber`
+            feedthrough_gap: the radial width of the insulating rings (m)
         """
 
         def excess_volume(can_radius: float) -> float:
@@ -178,46 +175,52 @@ class CoaxialChamber(Geometry):
 
         can_radius = brentq(excess_volume, rod_radius * (1 + 1e-9), 1.0)
         length = 2 * can_radius * aspect_ratio
-        return cls(rod_radius, can_radius, length, **kwargs)
+        return cls(
+            rod_radius=rod_radius,
+            can_radius=can_radius,
+            length=length,
+            feedthrough_gap=feedthrough_gap,
+        )
 
     @property
     def volume(self) -> float:
         """The gas volume (m3)."""
         return np.pi * (self.can_radius**2 - self.rod_radius**2) * self.length
 
-    def default_axial_cells(self, radial_cells: int) -> int:
-        """The number of cells along z that matches a radial resolution.
-
-        The spacing at mid-height is about three times the outer radial spacing,
-        bounded to between 0.6 and 1 times the radial count.
-        """
-        outer_spacing = (
-            self.can_radius * np.log(self.can_radius / self.rod_radius) / radial_cells
-        )
-        cells = self.length / outer_spacing * 0.35
-        return int(np.clip(cells, 0.6 * radial_cells, 1.0 * radial_cells))
-
-    def create_mesh(self, resolution: int) -> F.Mesh:
+    def create_mesh(
+        self, radial_cells: int, axial_cells: int, cap_refinement: float = 1.6
+    ) -> F.Mesh:
         """Creates a triangular (r, z) mesh, graded towards the rod and the caps.
 
         The radial spacing grows in proportion to r, which keeps the product of drift
-        speed and cell size uniform in the 1/r field.
+        speed and cell size uniform in the 1/r field. The axial spacing is smallest
+        at the end caps.
 
         Args:
-            resolution: the number of cells in the radial direction
+            radial_cells: the number of cells from the rod to the can
+            axial_cells: the number of cells from one end cap to the other. 0.6 to 1
+                times ``radial_cells`` is a reasonable start, more for a long chamber.
+            cap_refinement: how strongly the mesh is refined towards the end caps (0
+                for a uniform axial spacing)
 
         Returns:
             the mesh, in cylindrical coordinates
         """
-        axial_cells = self.axial_cells
-        if axial_cells is None:
-            axial_cells = self.default_axial_cells(resolution)
+        for name, value in {
+            "radial_cells": radial_cells,
+            "axial_cells": axial_cells,
+        }.items():
+            is_integer = isinstance(value, int) and not isinstance(value, bool)
+            if not is_integer:
+                raise TypeError(f"{name} must be an int, not {type(value).__name__}")
+            if value <= 0:
+                raise ValueError(f"{name} must be positive, not {value}")
 
         # a unit rectangle, then mapped onto the gas volume
         mesh = dmesh.create_rectangle(
             MPI.COMM_WORLD,
             [[0, -1], [1, 1]],
-            [resolution, axial_cells],
+            [radial_cells, axial_cells],
             dmesh.CellType.triangle,
             diagonal=dmesh.DiagonalType.crossed,
         )
@@ -227,8 +230,8 @@ class CoaxialChamber(Geometry):
 
         x[:, 0] = self.rod_radius * (self.can_radius / self.rod_radius) ** s
 
-        if self.cap_refinement > 0:
-            stretched = np.tanh(self.cap_refinement * t) / np.tanh(self.cap_refinement)
+        if cap_refinement > 0:
+            stretched = np.tanh(cap_refinement * t) / np.tanh(cap_refinement)
         else:
             stretched = t
         x[:, 1] = 0.5 * self.length * (1 + stretched)

@@ -15,7 +15,10 @@ Inside the package, each module holds one kind of object:
 | Module | Content |
 |---|---|
 | `geometry.py` | `Geometry`, `CoaxialChamber` |
-| `gas.py` | `Gas`, `ChargeCarrier`, `Reaction` |
+| `gas.py` | `Gas` |
+| `charge_carrier.py` | `ChargeCarrier`, a child of `festim.Species` |
+| `carrier_reaction.py` | `CarrierReaction`, a child of `festim.GenericReaction` |
+| `coefficient.py` | the type of a coefficient that may depend on E/N |
 | `beta.py`, `wall_loss.py` | beta spectrum, range, wall-loss Monte Carlo |
 | `source.py` | `IonisationSource`, `TritiumInGas` |
 | `field.py` | potential solvers |
@@ -23,7 +26,7 @@ Inside the package, each module holds one kind of object:
 | `model.py` | `IonChamberModel` |
 | `readout.py` | `Reading` and the functions that compute it |
 | `studies.py` | mesh extrapolation and response curves |
-| `mobility_electromigration.py`, `cellwise_diffusion_material.py` | subclasses of FESTIM classes |
+| `mobility_electromigration.py`, `cellwise_diffusion_material.py` | children of FESTIM's drift term and material |
 
 ## Tests
 

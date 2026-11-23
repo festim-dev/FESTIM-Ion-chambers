@@ -11,11 +11,16 @@ trust too much. So the gas is always something you define.
 ## Defining a gas
 
 A {class}`~ion_chambers.Gas` is built from {class}`~ion_chambers.ChargeCarrier` and
-{class}`~ion_chambers.Reaction` objects. This example is a gas in which electrons do
-not attach, so there are no negative ions at all:
+{class}`~ion_chambers.CarrierReaction` objects. This example is a gas in which
+electrons do not attach, so there are no negative ions at all:
 
 ```python
 import ion_chambers as ic
+
+electrons = ic.ChargeCarrier(name="e", charge=-1, mobility=0.3, diffusivity=0.3)
+positive_ions = ic.ChargeCarrier(name="P", charge=1, mobility=1.5e-4)
+
+recombination = ic.CarrierReaction(reactant=[positive_ions, electrons], rate=1e-13)
 
 gas = ic.Gas(
     name="my gas",
@@ -23,14 +28,9 @@ gas = ic.Gas(
     density=1.66,  # kg/m3, sets the range of the betas
     pressure=101325.0,  # Pa
     temperature=293.15,  # K
-    carriers=[
-        ic.ChargeCarrier(name="e", charge=-1, mobility=0.3, diffusivity=0.3),
-        ic.ChargeCarrier(name="P", charge=1, mobility=1.5e-4),
-    ],
-    reactions=[
-        ic.Reaction(reactants=["P", "e"], rate=1e-13),  # recombination, m3/s
-    ],
-    ionisation_products=("e", "P"),
+    carriers=[electrons, positive_ions],
+    ionisation_products=(electrons, positive_ions),
+    reactions=[recombination],
 )
 ```
 
@@ -43,13 +43,30 @@ Carriers
   temperature: give their diffusivity explicitly.
 
 Reactions
-: Each has a list of reactants, a rate coefficient and a list of products. The rate of
-  the reaction is the coefficient times the densities of the reactants, so the
-  coefficient is in 1/s for one reactant and m³/s for two. A reaction with no product
-  is a recombination and counts as a loss of signal.
+: Each has one or more reactants, a rate coefficient and, optionally, products. The
+  rate of the reaction is the coefficient times the densities of the reactants, so
+  the coefficient is in 1/s for one reactant and m³/s for two. A reaction with no
+  product is a recombination and counts as a loss of signal.
 
 Ionisation products
-: The two carriers that each ionisation creates.
+: The two carriers that each ionisation creates, one negative and one positive.
+
+## Relation to FESTIM
+
+`ChargeCarrier` is a child of `festim.Species`, and `CarrierReaction` is a child of
+`festim.GenericReaction`. They take part in the FESTIM problem directly, and their
+arguments (`reactant`, `product`) are named as in FESTIM.
+
+They add what a chamber needs:
+
+- A `ChargeCarrier` has a `charge`, a `mobility` and a `diffusivity`.
+- A `CarrierReaction` is created without a volume subdomain, because the gas volume
+  only exists once the model is initialised. Its `rate` may depend on the reduced
+  electric field, which FESTIM's rate coefficients do not support.
+
+Like any FESTIM species, a carrier holds the solution of the model it belongs to. Do
+not share one gas between two models that you use at the same time. Build a gas for
+each, for instance with a function that returns a new `Gas`.
 
 ## Pressure and temperature
 
@@ -91,4 +108,4 @@ to check that your data covers the range the chamber actually sees.
 
 There is no separate impurity object. An impurity that captures electrons, such as a
 trace of O₂ or water in N₂, is described by adding a negative-ion carrier and an
-attachment reaction whose rate reflects the impurity concentration.
+attachment `CarrierReaction` whose rate reflects the impurity concentration.

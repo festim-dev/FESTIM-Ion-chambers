@@ -39,10 +39,13 @@ air = ic.Gas(
     w_value=33.97,  # eV per ion pair
     density=1.205,  # kg/m3
     carriers=[electrons, positive_ions, negative_ions],
+    ionisation_products=(electrons, positive_ions),
     reactions=[
-        ic.Reaction(reactants=["e"], products=["N"], rate=1.0e8),  # attachment
-        ic.Reaction(reactants=["P", "N"], rate=2.0e-12),  # recombination
-        ic.Reaction(reactants=["P", "e"], rate=2.0e-13),  # recombination
+        # attachment of electrons to O2
+        ic.CarrierReaction(reactant=electrons, product=negative_ions, rate=1.0e8),
+        # recombination
+        ic.CarrierReaction(reactant=[positive_ions, negative_ions], rate=2.0e-12),
+        ic.CarrierReaction(reactant=[positive_ions, electrons], rate=2.0e-13),
     ],
 )
 
@@ -59,7 +62,8 @@ print(reading.current, reading.collection_efficiency)
 
 A model is composed of a geometry, a gas, one or more ionisation sources, a potential
 solver and a bias. The package ships no gas data: you define the charge carriers and
-their reactions, as above. `scripts/reference_case.py` is a fuller air example that
+their reactions, as above. `ChargeCarrier` and `CarrierReaction` are children of
+FESTIM's `Species` and `GenericReaction`. `scripts/reference_case.py` is a fuller air example that
 follows the pressure. The documentation explains each part.
 
 ## Documentation

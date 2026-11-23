@@ -25,14 +25,14 @@ Gas
 ---
 
 .. autoclass:: ion_chambers.Gas
-   :members: carrier, number_density, thermal_voltage
+   :members: number_density, thermal_voltage
 
 .. autoclass:: ion_chambers.ChargeCarrier
 
-.. autoclass:: ion_chambers.Reaction
+.. autoclass:: ion_chambers.CarrierReaction
    :members: is_recombination
 
-.. autodata:: ion_chambers.gas.Coefficient
+.. autodata:: ion_chambers.coefficient.Coefficient
 
 Sources
 -------
@@ -86,8 +86,10 @@ Parameter studies
 
 .. autofunction:: ion_chambers.save_json
 
-FESTIM extensions
------------------
+Other FESTIM extensions
+-----------------------
+
+``ChargeCarrier`` and ``CarrierReaction`` above are also children of FESTIM classes.
 
 .. autoclass:: ion_chambers.MobilityElectromigration
 

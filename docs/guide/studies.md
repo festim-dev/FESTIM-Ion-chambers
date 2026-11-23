@@ -56,7 +56,6 @@ The `scripts/` folder holds the studies behind the [prototype results](../result
 Each writes a JSON file to `results/`.
 
 ```bash
-python scripts/quick_check.py          # 5 s end-to-end check, every step spelled out
 python scripts/response_curve.py       # current against activity
 python scripts/bias_sweep.py           # saturation curve
 python scripts/aspect_ratio_sweep.py   # chamber shape at fixed volume

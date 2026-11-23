@@ -14,10 +14,8 @@ pip install -e .
 This gives FESTIM 2.2 on DOLFINx 0.11 from conda-forge, plus the tools for testing
 and building this documentation.
 
-Check that everything works (about 5 s):
+Check that everything works by running the tests (about 10 s):
 
 ```bash
-python scripts/quick_check.py
+python -m pytest
 ```
-
-It solves the reference chamber at three activities and prints the readings.

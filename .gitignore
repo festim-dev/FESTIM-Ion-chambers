@@ -228,3 +228,6 @@ results/
 # Claude Code files (kept local for now)
 CLAUDE.md
 .claude/
+
+# Local VS Code settings
+.vscode

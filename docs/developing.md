@@ -22,7 +22,6 @@ boundary conditions and exports, then initialised and run.
 | `geometry.py` | `Geometry`, `CoaxialChamber` |
 | `source.py` | `IonisationSource`, `TritiumInGas` |
 | `beta.py` | beta spectrum, range, wall-loss Monte Carlo |
-| `studies.py` | mesh extrapolation and response curves |
 | `constants.py` | physical constants |
 
 ## Tests

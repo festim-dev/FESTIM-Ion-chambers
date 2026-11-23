@@ -32,8 +32,8 @@ with measurements**: the real vessel geometry and the carrier gases of the exper
   as FESTIM-style exports.
 - Report how much the space charge would distort the field, so you know when the
   fixed-field assumption stops holding.
-- Run response curves (current against activity), saturation curves (current against
-  bias) and shape studies, with mesh extrapolation.
+- Example scripts for response curves (current against activity), saturation curves
+  (current against bias) and shape studies, with mesh extrapolation.
 
 ```{toctree}
 :caption: Getting started

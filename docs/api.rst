@@ -89,14 +89,6 @@ Beta spectrum and wall losses
 .. automodule:: ion_chambers.beta
    :members:
 
-Parameter studies
------------------
-
-.. autofunction:: ion_chambers.richardson
-
-.. autofunction:: ion_chambers.response_curve
-
-.. autofunction:: ion_chambers.save_json
 
 Constants
 ---------

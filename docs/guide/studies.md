@@ -1,52 +1,56 @@
 # Parameter studies
 
+The package has no function for parameter studies. A study is a loop in your own
+script, which keeps every step visible and easy to change. This page shows the two
+patterns you need, and the scripts in `scripts/` are complete examples to copy.
+
 ## Mesh extrapolation
 
 The current computed on one mesh carries an error proportional to the cell size (see
 [Stabilisation](transport.md#stabilisation)). Solving on two meshes and extrapolating
-to zero cell size removes most of it. {func}`~ion_chambers.richardson` does the
-arithmetic:
+to zero cell size removes most of it. This is Richardson extrapolation of a
+first-order error:
 
 ```python
-import ion_chambers as ic
+cell_size_ratio = fine_resolution / coarse_resolution
 
-extrapolated = ic.richardson(coarse=current_150, fine=current_300)
+difference = fine_current.value - coarse_current.value
+extrapolated_current = fine_current.value + difference / (cell_size_ratio - 1)
 ```
 
-## Response curves
+With a fine mesh of twice the resolution, the ratio is 2 and this is
+`2 * fine - coarse`. The difference between the fine and the extrapolated value is a
+measure of the error that remains.
 
-{func}`~ion_chambers.response_curve` computes the current against activity on two
-meshes and extrapolates each point. You give it two transport problems that describe
-the same chamber on a coarse and on a fine mesh. Each needs a `ChamberCurrent` among
-its exports.
+## Changing the activity between runs
 
-`scripts/reference_case.py` has a function, `build_transport_problem`, that sets up
-both problems for a given chamber, bias and resolution. With it:
+A problem is initialised once. After that, the activity of a
+{class}`~ion_chambers.TritiumInGas` source can be changed and the problem run again,
+which is much cheaper than building a new problem:
 
 ```python
-import numpy as np
-from reference_case import build_transport_problem, reference_chamber
+transport.initialise()
 
-import ion_chambers as ic
-
-chamber = reference_chamber()
-activities = np.logspace(8, 13, 6)  # Bq/m3
-
-rows = ic.response_curve(
-    coarse_problem=build_transport_problem(chamber, bias=500.0, resolution=150),
-    fine_problem=build_transport_problem(chamber, bias=500.0, resolution=300),
-    activities=activities,
-)
-ic.save_json(rows, "results/my_study.json")
+for activity in activities:
+    tritium.activity = activity
+    transport.run()
+    print(activity, current.value)
 ```
 
-Each row holds `activity`, `current_coarse`, `current_fine`, `current_extrapolated`,
-and the value of every other quantity exported by the fine problem, under its title.
+The activity is the only thing that can change this way. Another bias, pressure, gas
+or shape needs new problems, so loop over that parameter and build the problems inside
+the loop.
 
-To study another parameter, loop over it and build the two problems again in each
-pass. `scripts/bias_sweep.py` does this for the bias and
-`scripts/aspect_ratio_sweep.py` for the chamber shape. The same pattern works for the
-pressure or the gas.
+## A complete response curve
+
+`scripts/response_curve.py` puts the two patterns together: the same chamber on a
+coarse and on a fine mesh, solved at every activity and extrapolated. It uses
+`build_transport_problem` from the [worked example in air](../example_air.md) to set
+up each problem.
+
+```{literalinclude} ../../scripts/response_curve.py
+:language: python
+```
 
 ## Ready-made scripts
 

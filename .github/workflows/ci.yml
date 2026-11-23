@@ -22,9 +22,9 @@ jobs:
           python-version: "3.12"
       - run: pip install ruff==0.17.6
       - name: Format
-        run: ruff format --check src tests scripts docs
+        run: ruff format --check src tests examples docs
       - name: Lint
-        run: ruff check src tests scripts
+        run: ruff check src tests examples
 
   test:
     name: test (FESTIM ${{ matrix.festim }})

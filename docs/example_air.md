@@ -5,7 +5,7 @@ number in a result is one you chose and can check.
 
 This page shows a complete example: room air, the 1 L chamber used for the
 [prototype results](results.md), and a function that sets up the two problems for
-them. It is the file `scripts/reference_case.py`, which the scripts in that folder
+them. It is the file `examples/reference_case.py`, which the scripts in that folder
 import. Copy it as a starting point for your own gas.
 
 :::{warning}
@@ -14,7 +14,7 @@ way they are scaled with pressure and temperature is deliberately simple. Check 
 against your conditions before relying on a result.
 :::
 
-```{literalinclude} ../scripts/reference_case.py
+```{literalinclude} ../examples/reference_case.py
 :language: python
 ```
 
@@ -45,7 +45,7 @@ With `n` the gas density relative to 1 atm and 293.15 K:
 
 ## Using it
 
-From a script in the `scripts/` folder:
+From a script in the `examples/` folder:
 
 ```python
 from reference_case import air, reference_chamber

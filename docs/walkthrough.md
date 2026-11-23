@@ -910,7 +910,7 @@ lost to the walls. The wall loss does not depend on the activity; recombination
 does.
 
 The same loop over the bias, the gas or the chamber shape gives the design studies
-in `scripts/`.
+in `examples/`.
 
 ```python
 share_collected = sweep_wall * sweep_collection

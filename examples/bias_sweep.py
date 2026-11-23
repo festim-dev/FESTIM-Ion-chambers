@@ -1,9 +1,9 @@
-"""Shape study: response curves of 1 L chambers with different length/diameter.
+"""Saturation curve: chamber current against bias, reference 1 L chamber.
 
-    python scripts/aspect_ratio_sweep.py
+    python examples/bias_sweep.py
 
-Every shape needs new problems, because the mesh changes. Every point is solved on a
-coarse and on a fine mesh and extrapolated to zero cell size, as in
+Every bias needs new problems, because the electric potential changes. Every point
+is solved on a coarse and on a fine mesh and extrapolated to zero cell size, as in
 response_curve.py.
 
 Edit the parameters below to change the case.
@@ -12,46 +12,41 @@ Edit the parameters below to change the case.
 import json
 import os
 
-import numpy as np
-from reference_case import build_transport_problem
+from reference_case import build_transport_problem, reference_chamber
 
 import ion_chambers as ic
 
-ASPECT_RATIOS = [0.4, 1.27, 7.0]  # length / diameter of the can
-# mesh cells from one end cap to the other on the coarse mesh, one per aspect ratio:
-# the long chamber needs more
-COARSE_AXIAL_CELLS = [90, 90, 150]
+BIASES = [
+    250.0,
+    350.0,
+    500.0,
+    700.0,
+    1000.0,
+    1400.0,
+    2000.0,
+]  # V, potential of the anode rod
 COARSE_RADIAL_CELLS = 150  # mesh cells from the rod to the can
+COARSE_AXIAL_CELLS = 90  # mesh cells from one end cap to the other
 REFINEMENT = 2  # the fine mesh has this many times more cells in both directions
-VOLUME = 1e-3  # m3
-ROD_RADIUS = 1.5e-3  # m
-BIAS = 500.0  # V, potential of the anode rod
-OUTPUT_FILE = "results/aspect_ratio.json"
+OUTPUT_FILE = "results/bias.json"
 
-# activity concentrations (Bq/m3): 1 mCi/m3, then 1e8 to 1e14
-ACTIVITIES = np.concatenate([[3.7e7], np.logspace(8, 14, 13)])
+CURIE = ic.constants.BQ_PER_CI  # Bq
+ACTIVITIES = [1 * CURIE, 10 * CURIE, 100 * CURIE]  # Bq/m3
 
+chamber = reference_chamber()
 
 results = []
-for aspect_ratio, coarse_axial_cells in zip(
-    ASPECT_RATIOS, COARSE_AXIAL_CELLS, strict=True
-):
-    chamber = ic.CoaxialChamber.from_aspect_ratio(
-        volume=VOLUME, rod_radius=ROD_RADIUS, aspect_ratio=aspect_ratio
-    )
-    print(
-        f"L/D = {aspect_ratio}: can radius {chamber.can_radius * 100:.2f} cm, "
-        f"length {chamber.length * 100:.2f} cm"
-    )
+for bias in BIASES:
+    print(f"bias {bias:g} V")
 
     # the problem on the coarse mesh, which only gives a current
     coarse_current = ic.ChamberCurrent(surface=chamber.anode)
 
     coarse_problem = build_transport_problem(
         chamber,
-        BIAS,
+        bias,
         radial_cells=COARSE_RADIAL_CELLS,
-        axial_cells=coarse_axial_cells,
+        axial_cells=COARSE_AXIAL_CELLS,
     )
     coarse_problem.exports = [coarse_current]
     coarse_problem.initialise()
@@ -66,9 +61,9 @@ for aspect_ratio, coarse_axial_cells in zip(
 
     fine_problem = build_transport_problem(
         chamber,
-        BIAS,
+        bias,
         radial_cells=REFINEMENT * COARSE_RADIAL_CELLS,
-        axial_cells=REFINEMENT * coarse_axial_cells,
+        axial_cells=REFINEMENT * COARSE_AXIAL_CELLS,
     )
     fine_problem.exports = [
         fine_current,
@@ -107,16 +102,8 @@ for aspect_ratio, coarse_axial_cells in zip(
         }
         rows.append(row)
 
-    result = {
-        "aspect_ratio": aspect_ratio,
-        "rod_radius": chamber.rod_radius,
-        "can_radius": chamber.can_radius,
-        "length": chamber.length,
-        "bias": BIAS,
-        "rows": rows,
-    }
-    results.append(result)
-    # saved after every shape, so a failure later on does not lose the work done
+    results.append({"bias": bias, "rows": rows})
+    # saved after every bias, so a failure later on does not lose the work done
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
         json.dump(results, f, indent=1)

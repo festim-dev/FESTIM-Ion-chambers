@@ -2,7 +2,7 @@
 
 The package has no function for parameter studies. A study is a loop in your own
 script, which keeps every step visible and easy to change. This page shows the two
-patterns you need, and the scripts in `scripts/` are complete examples to copy.
+patterns you need, and the `examples/` folder holds complete scripts to copy.
 
 ## Mesh extrapolation
 
@@ -41,26 +41,45 @@ the loop.
 
 ## A complete response curve
 
-`scripts/response_curve.py` puts the two patterns together: the same chamber on a
+`examples/response_curve.py` puts the two patterns together: the same chamber on a
 coarse and on a fine mesh, solved at every activity and extrapolated. It uses
 `build_transport_problem` from the [worked example in air](../example_air.md) to set
 up each problem.
 
-```{literalinclude} ../../scripts/response_curve.py
+```{literalinclude} ../../examples/response_curve.py
 :language: python
 ```
 
-## Ready-made scripts
+## Ready-made examples
 
-The `scripts/` folder holds the studies behind the [prototype results](../results.md).
-Each writes a JSON file to `results/`.
+The `examples/` folder holds the studies behind the [results](../results.md). They
+come in pairs: a sweep that solves the model and writes a JSON file to `results/`,
+and a post-processing script that reads that file, prints the numbers of interest and
+saves a figure.
+
+| Sweep | Post-processing | What it gives |
+|---|---|---|
+| `response_curve.py`: current against activity | `calibration.py` | the sensitivity, the end of the linear range, and the activity that corresponds to a measured current |
+| `bias_sweep.py`: current against bias | `saturation_curve.py` | the bias for 99% collection, and the saturation current from a fit of 1/I against 1/V² |
+| `aspect_ratio_sweep.py`: chamber shape at fixed volume | `shape_comparison.py` | the sensitivity and the linear range of each shape |
 
 ```bash
-python scripts/response_curve.py       # current against activity
-python scripts/bias_sweep.py           # saturation curve
-python scripts/aspect_ratio_sweep.py   # chamber shape at fixed volume
+python examples/response_curve.py
+python examples/calibration.py
 ```
 
 Each script is a plain sequence of steps with its parameters at the top. Edit those to
-change the case. With the default meshes of 150 and 300 radial cells, expect seconds to
-minutes per case.
+change the case. With the default meshes of 150 and 300 radial cells, a sweep takes a
+few minutes. The post-processing scripts take a second.
+
+## From a current to an activity
+
+A monitor is used the other way round from the model: the current is measured and the
+activity is wanted. `calibration.py` shows the two ways of doing that from a response
+curve. The linear calibration divides the current by the sensitivity. Above the linear
+range it reads too low, because part of the charge recombined, and reading the
+activity off the full curve corrects for it.
+
+```{literalinclude} ../../examples/calibration.py
+:language: python
+```

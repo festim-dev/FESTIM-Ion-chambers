@@ -5,7 +5,7 @@
 ```
 src/ion_chambers/    the package
 tests/               unit and integration tests
-scripts/             parameter studies, and the example air and chamber they use
+examples/            parameter studies, their post-processing, and the example air and chamber
 data/experimental/   digitised measurements
 docs/                this documentation
 ```
@@ -39,7 +39,7 @@ includes a regression against the currents of the original prototype.
 
 ```bash
 ruff format .
-ruff check src tests scripts
+ruff check src tests examples
 ```
 
 The conventions follow FESTIM's: annotated signatures, Google-style docstrings without

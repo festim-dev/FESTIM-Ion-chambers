@@ -86,7 +86,7 @@ print(current.value, collection_efficiency.value)
 
 The classes are children of FESTIM's: the problems, `ChargeCarrier` (a species),
 `CarrierReaction` (a reaction), `FixedPotentialBC` and the exports. The package ships
-no gas data: `scripts/reference_case.py` is a fuller air example that follows the
+no gas data: `examples/reference_case.py` is a fuller air example that follows the
 pressure.
 
 ## Documentation
@@ -105,17 +105,25 @@ then open `docs/_build/html/index.html`.
 ```
 src/ion_chambers/    the package
 tests/               unit and integration tests (python -m pytest)
-scripts/             parameter studies (write JSON to results/, not tracked)
+examples/            parameter studies and their post-processing (write to results/, not tracked)
 data/experimental/   measurements digitised from the TFG 2026 slides (see its README)
 docs/                documentation (Sphinx)
 ```
 
-## Running the studies
+## Running the examples
+
+Each sweep writes a JSON file to `results/`, and a post-processing script turns it
+into numbers and a figure:
 
 ```bash
-python scripts/response_curve.py       # current vs activity, reference chamber
-python scripts/aspect_ratio_sweep.py   # L/D sweep at 1 L
-python scripts/bias_sweep.py           # saturation curve
+python examples/response_curve.py       # current vs activity, reference chamber
+python examples/calibration.py          # sensitivity, linear range, current -> activity
+
+python examples/bias_sweep.py           # current vs bias
+python examples/saturation_curve.py     # bias for 99% collection, saturation current
+
+python examples/aspect_ratio_sweep.py   # L/D sweep at 1 L
+python examples/shape_comparison.py     # sensitivity and linear range of each shape
 ```
 
 Each script is a plain sequence of steps with its parameters at the top. Each solve

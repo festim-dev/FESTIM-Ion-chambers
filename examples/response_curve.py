@@ -1,6 +1,6 @@
 """Response curve: chamber current against tritium activity, reference 1 L chamber.
 
-    python scripts/response_curve.py
+    python examples/response_curve.py
 
 The current computed on one mesh has an error proportional to the cell size, so
 every point is solved on a coarse and on a fine mesh and extrapolated to zero cell

@@ -89,7 +89,7 @@ class DiffusionFloor:
     with :math:`h_E` the cell length along the field. This is first-order upwinding
     written as diffusion. The floor vanishes where the field is weak, so it cannot
     fake losses in low-field corners, and the error it leaves is first order in the
-    cell size (see :func:`ion_chambers.richardson`).
+    cell size. Extrapolate from two meshes for numbers you intend to quote.
 
     Args:
         factor: the multiplier of the floor. 1 gives a cell Péclet number of 2; 0

@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 import pytest
 from dolfinx import fem
@@ -83,25 +81,3 @@ def test_lumped_projection_conserves_the_integral_of_a_thin_layer(chamber):
     integral = assemble_scalar(weight * f * ufl.dx)
     exact = np.pi * (R**2 - (R - thickness) ** 2) * chamber.length
     assert np.isclose(integral, exact, rtol=0.05)
-
-
-@pytest.mark.parametrize(
-    "coarse, fine, order, ratio, expected",
-    [
-        (1.2, 1.1, 1, 2.0, 1.0),  # error halves: 0.2 -> 0.1 -> 0
-        (1.4, 1.1, 2, 2.0, 1.0),  # error quarters: 0.4 -> 0.1 -> 0
-        (1.3, 1.1, 1, 3.0, 1.0),  # error divided by three
-        (5.0, 5.0, 1, 2.0, 5.0),  # already converged
-    ],
-)
-def test_richardson(coarse, fine, order, ratio, expected):
-    """Richardson extrapolation recovers the exact value from two results whose error
-    follows the stated order."""
-    assert np.isclose(ic.richardson(coarse, fine, order=order, ratio=ratio), expected)
-
-
-def test_save_json_creates_the_folder(tmp_path):
-    """save_json creates a missing folder and writes numpy floats as plain numbers."""
-    path = tmp_path / "new_folder" / "out.json"
-    ic.save_json({"current": np.float64(1.5)}, path)
-    assert json.loads(path.read_text()) == {"current": 1.5}

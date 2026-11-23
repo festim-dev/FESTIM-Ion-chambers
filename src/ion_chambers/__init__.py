@@ -26,7 +26,6 @@ from ion_chambers.exports import (
 from ion_chambers.gas import CarrierReaction, ChargeCarrier, Gas
 from ion_chambers.geometry import CoaxialChamber, Geometry
 from ion_chambers.source import IonisationSource, TritiumInGas
-from ion_chambers.studies import response_curve, richardson, save_json
 
 __all__ = [
     "CarrierReaction",
@@ -54,7 +53,4 @@ __all__ = [
     "WallEfficiency",
     "beta",
     "constants",
-    "response_curve",
-    "richardson",
-    "save_json",
 ]

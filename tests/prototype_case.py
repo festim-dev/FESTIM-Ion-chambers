@@ -13,15 +13,22 @@ def air() -> ic.Gas:
     positive_ions = ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4)
     negative_ions = ic.ChargeCarrier(name="N", charge=-1, mobility=2.2e-4)
 
-    attachment = ic.Reaction(reactants=["e"], products=["N"], rate=1.0e8)
-    ion_ion_recombination = ic.Reaction(reactants=["P", "N"], rate=2.0e-12)
-    electron_ion_recombination = ic.Reaction(reactants=["P", "e"], rate=2.0e-13)
+    attachment = ic.CarrierReaction(
+        reactant=electrons, product=negative_ions, rate=1.0e8
+    )
+    ion_ion_recombination = ic.CarrierReaction(
+        reactant=[positive_ions, negative_ions], rate=2.0e-12
+    )
+    electron_ion_recombination = ic.CarrierReaction(
+        reactant=[positive_ions, electrons], rate=2.0e-13
+    )
 
     return ic.Gas(
         name="air",
         w_value=33.97,
         density=1.205,
         carriers=[electrons, positive_ions, negative_ions],
+        ionisation_products=(electrons, positive_ions),
         reactions=[attachment, ion_ion_recombination, electron_ion_recombination],
     )
 

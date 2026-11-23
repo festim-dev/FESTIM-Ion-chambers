@@ -62,9 +62,18 @@ def air(pressure=STANDARD_PRESSURE, temperature=ROOM_TEMPERATURE):
         name="N", charge=-1, mobility=negative_ion_mobility
     )
 
-    attachment = ic.Reaction(reactants=["e"], products=["N"], rate=attachment_frequency)
-    ion_ion = ic.Reaction(reactants=["P", "N"], rate=ion_ion_recombination)
-    electron_ion = ic.Reaction(reactants=["P", "e"], rate=electron_ion_recombination)
+    # electron + O2 -> negative ion
+    attachment = ic.CarrierReaction(
+        reactant=electrons, product=negative_ions, rate=attachment_frequency
+    )
+    # positive ion + negative ion -> neutral
+    ion_ion = ic.CarrierReaction(
+        reactant=[positive_ions, negative_ions], rate=ion_ion_recombination
+    )
+    # positive ion + electron -> neutral
+    electron_ion = ic.CarrierReaction(
+        reactant=[positive_ions, electrons], rate=electron_ion_recombination
+    )
 
     return ic.Gas(
         name="air",
@@ -74,7 +83,7 @@ def air(pressure=STANDARD_PRESSURE, temperature=ROOM_TEMPERATURE):
         temperature=temperature,
         carriers=[electrons, positive_ions, negative_ions],
         reactions=[attachment, ion_ion, electron_ion],
-        ionisation_products=("e", "P"),
+        ionisation_products=(electrons, positive_ions),
     )
 
 

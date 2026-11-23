@@ -110,8 +110,9 @@ def build_transport_problem(chamber, bias, resolution):
         resolution: the number of mesh cells across the electrode gap
 
     Returns:
-        the transport problem, an ion_chambers.ChargeTransportProblem that is ready
-        to be initialised. Its tritium activity is zero: set it before running.
+        the transport problem, an ion_chambers.ChargeTransportProblem that is not
+        yet initialised. It has no exports and its tritium activity is zero: give
+        it exports before initialising, and set the activity before running.
     """
     # 1. the electric potential
     electrostatics = ic.ElectrostaticProblem()
@@ -129,11 +130,4 @@ def build_transport_problem(chamber, bias, resolution):
     transport.electrostatic_problem = electrostatics
     transport.gas = air()
     transport.ionisation_sources = [ic.TritiumInGas(activity=0.0, geometry=chamber)]
-    transport.exports = [
-        ic.ChamberCurrent(surface=chamber.anode),
-        ic.IdealCurrent(),
-        ic.WallEfficiency(),
-        ic.CollectionEfficiency(),
-        ic.SpaceChargeField(),
-    ]
     return transport

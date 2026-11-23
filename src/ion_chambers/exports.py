@@ -310,6 +310,9 @@ class SpaceChargeField(ChamberQuantity):
             charge_density=self._charge_density,
             element_degree=applied.element_degree,
         )
+        # the same cell and facet tags as the applied problem
+        self._space_charge_problem.volume_meshtags = applied.volume_meshtags
+        self._space_charge_problem.facet_meshtags = applied.facet_meshtags
         self._space_charge_problem.initialise()
 
     def evaluate(self, problem: ChargeTransportProblem) -> float:

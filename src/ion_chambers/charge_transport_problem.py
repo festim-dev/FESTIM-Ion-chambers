@@ -200,8 +200,9 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
         gas: the gas filling the chamber
         ionisation_sources: the ionisation sources
         stabilisation: the stabilisation of the drift
-        gas_volume: the volume subdomain of the gas, a
-            :class:`festim.VolumeSubdomain` with id 1
+        gas_volume: the volume subdomain of the gas, after ``initialise``. A
+            :class:`festim.VolumeSubdomain` with the id of the volume subdomain of
+            the electrostatic problem.
         potential: the electric potential (V), after ``initialise``
         reduced_field: E/N in each cell (Td), after ``initialise``
         mobilities: the mobility of each carrier (m2/V/s), keyed by name. A float, or
@@ -248,9 +249,9 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
         self.ionisation_sources = ionisation_sources or []
         self.stabilisation = stabilisation or DiffusionFloor()
 
-        # The material is created during initialise, once the electric field and
-        # therefore the diffusion coefficients are known.
-        self.gas_volume = F.VolumeSubdomain(id=1, material=None)
+        # Created during initialise, once the electric field and therefore the
+        # diffusion coefficients are known.
+        self.gas_volume = None
         self.potential = None
 
     def initialise(self) -> None:
@@ -262,6 +263,15 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
             )
         self.mesh = self.electrostatic_problem.mesh
         self.potential = self.electrostatic_problem.u
+
+        cell_name = self.mesh.mesh.topology.cell_name()
+        if cell_name != "triangle":
+            raise ValueError(f"the mesh must be made of triangles, not {cell_name}s")
+
+        # The same cell and facet tags as the electrostatic problem, whether it made
+        # them from the locators of its subdomains or was given them with the mesh.
+        self.volume_meshtags = self.electrostatic_problem.volume_meshtags
+        self.facet_meshtags = self.electrostatic_problem.facet_meshtags
 
         self._create_coefficients()
         self._create_subdomains()
@@ -323,10 +333,21 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
         return function
 
     def _create_subdomains(self) -> None:
-        """The gas volume, plus the surfaces of the electrostatic problem."""
-        self.gas_volume.material = CellwiseDiffusionMaterial(
+        """The gas volume, plus the surfaces of the electrostatic problem.
+
+        The gas volume is a new subdomain with the id of the one of the electrostatic
+        problem, because it carries the material of this problem.
+        """
+        volumes = self.electrostatic_problem.volume_subdomains
+        if len(volumes) != 1:
+            raise ValueError(
+                f"the electrostatic problem must have one volume subdomain, the gas, "
+                f"not {len(volumes)}"
+            )
+        material = CellwiseDiffusionMaterial(
             D_fields=self.diffusivities, name=self.gas.name
         )
+        self.gas_volume = F.VolumeSubdomain(id=volumes[0].id, material=material)
         self.subdomains = [self.gas_volume]
         for surface in self.electrostatic_problem.surface_subdomains:
             self.subdomains.append(surface)

@@ -1,6 +1,10 @@
 """Integration tests: full solves of small problems."""
 
+from mpi4py import MPI
+
+import dolfinx
 import festim as F
+import io4dolfinx
 import numpy as np
 import pytest
 from conftest import ACTIVITIES
@@ -364,3 +368,130 @@ def test_two_sources_add_up(coarse_electrostatics):
         air(), transport.volume_of_gas
     )
     assert np.isclose(generation.value, one_source)
+
+
+# ---- a mesh read from a file --------------------------------------------------------
+
+GAS_ID = 7
+ANODE_ID = 11
+CATHODE_ID = 12
+
+
+def write_tagged_mesh(chamber: ic.CoaxialChamber, filename) -> None:
+    """Writes the mesh of a chamber to a file with cell and facet tags, as a mesh
+    generator would."""
+    mesh = chamber.create_mesh(radial_cells=30, axial_cells=18).mesh
+
+    num_cells = mesh.topology.index_map(2).size_local
+    all_cells = np.arange(num_cells, dtype=np.int32)
+    cell_values = np.full(num_cells, GAS_ID, dtype=np.int32)
+    cell_tags = dolfinx.mesh.meshtags(mesh, 2, all_cells, cell_values)
+
+    anode_facets = dolfinx.mesh.locate_entities_boundary(mesh, 1, chamber.is_anode)
+    cathode_facets = dolfinx.mesh.locate_entities_boundary(mesh, 1, chamber.is_cathode)
+    facets = np.concatenate([anode_facets, cathode_facets])
+    facet_values = np.concatenate(
+        [
+            np.full(len(anode_facets), ANODE_ID, dtype=np.int32),
+            np.full(len(cathode_facets), CATHODE_ID, dtype=np.int32),
+        ]
+    )
+    order = np.argsort(facets)
+    facet_tags = dolfinx.mesh.meshtags(mesh, 1, facets[order], facet_values[order])
+
+    io4dolfinx.write_mesh(filename, mesh)
+    io4dolfinx.write_meshtags(filename, mesh, cell_tags, meshtag_name="cells")
+    io4dolfinx.write_meshtags(filename, mesh, facet_tags, meshtag_name="facets")
+
+
+def run_on_mesh_from_file(filename) -> float:
+    """Reads a mesh and its tags from a file, solves both problems on it with
+    subdomains defined by their ids only, and returns the chamber current."""
+    mesh = io4dolfinx.read_mesh(filename, MPI.COMM_WORLD)
+    cell_tags = io4dolfinx.read_meshtags(filename, mesh, meshtag_name="cells")
+    facet_tags = io4dolfinx.read_meshtags(filename, mesh, meshtag_name="facets")
+
+    gas_volume = F.VolumeSubdomain(id=GAS_ID, material=None)
+    anode = F.SurfaceSubdomain(id=ANODE_ID)
+    cathode = F.SurfaceSubdomain(id=CATHODE_ID)
+
+    electrostatics = ic.ElectrostaticProblem()
+    electrostatics.mesh = F.Mesh(mesh, coordinate_system="cylindrical")
+    electrostatics.volume_meshtags = cell_tags
+    electrostatics.facet_meshtags = facet_tags
+    electrostatics.subdomains = [gas_volume, anode, cathode]
+    electrostatics.boundary_conditions = [
+        ic.FixedPotentialBC(subdomain=anode, value=500.0),
+        ic.FixedPotentialBC(subdomain=cathode, value=0.0),
+    ]
+    electrostatics.initialise()
+    electrostatics.run()
+
+    current = ic.ChamberCurrent(surface=anode)
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics,
+        gas=air(),
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+        exports=[current, ic.SpaceChargeField()],
+    )
+    transport.initialise()
+    transport.run()
+    return current.value
+
+
+def test_mesh_read_from_a_file_gives_the_same_current(tmp_path):
+    """A mesh read from a file, with subdomains defined by the ids of its tags, gives
+    the same current as the same mesh created by the chamber."""
+    filename = tmp_path / "chamber.bp"
+    write_tagged_mesh(reference_chamber(), filename)
+    expected = run_coarse_problem("ChamberCurrent")
+    assert np.isclose(run_on_mesh_from_file(filename), expected, rtol=1e-8)
+
+
+def test_gas_volume_takes_the_id_of_the_electrostatic_problem(coarse_transport):
+    """After initialise, the gas volume of the transport problem has the id of the
+    volume subdomain of the electrostatic problem."""
+    coarse_transport.initialise()
+    expected = coarse_transport.electrostatic_problem.volume_subdomains[0].id
+    assert coarse_transport.gas_volume.id == expected
+
+
+def test_rejects_an_electrostatic_problem_with_two_volumes(chamber):
+    """An electrostatic problem with more than one volume subdomain raises a
+    ValueError, because the transport problem solves in the gas only."""
+    electrostatics = solve_potential(chamber, radial_cells=30, axial_cells=18)
+    electrostatics.subdomains.append(F.VolumeSubdomain(id=2, material=None))
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics,
+        gas=air(),
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+    )
+    with pytest.raises(ValueError, match="must have one volume subdomain"):
+        transport.initialise()
+
+
+def test_rejects_a_mesh_that_is_not_made_of_triangles():
+    """A mesh of quadrilaterals raises a ValueError, because the stabilisation is
+    written for triangles."""
+    quadrilaterals = dolfinx.mesh.create_unit_square(
+        MPI.COMM_WORLD, 4, 4, dolfinx.mesh.CellType.quadrilateral
+    )
+    left = F.SurfaceSubdomain(id=1, locator=lambda x: np.isclose(x[0], 0.0))
+    right = F.SurfaceSubdomain(id=2, locator=lambda x: np.isclose(x[0], 1.0))
+    electrostatics = ic.ElectrostaticProblem(
+        mesh=F.Mesh(quadrilaterals),
+        subdomains=[F.VolumeSubdomain(id=1, material=None), left, right],
+        boundary_conditions=[
+            ic.FixedPotentialBC(subdomain=left, value=100.0),
+            ic.FixedPotentialBC(subdomain=right, value=0.0),
+        ],
+    )
+    electrostatics.initialise()
+    electrostatics.run()
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics,
+        gas=air(),
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+    )
+    with pytest.raises(ValueError, match="must be made of triangles"):
+        transport.initialise()

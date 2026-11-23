@@ -1,8 +1,8 @@
 # ion_chambers
 
-A [FESTIM](https://github.com/festim-dev/FESTIM) model of tritium ionisation
-chambers, the in-line process monitors that read a tritium concentration as an electric
-current.
+A companion package for [FESTIM](https://github.com/festim-dev/FESTIM) to model
+tritium ionisation chambers, the in-line process monitors that read a tritium
+concentration as an electric current.
 
 Tritium betas ionise the gas in the chamber. A bias between two electrodes sweeps the
 charges out before they recombine, and the current that flows is the reading. This
@@ -12,7 +12,7 @@ the geometry, the gas, the bias and the tritium activity.
 The [theory](theory.md) page shows how a chamber works, one mechanism at a time, and
 the [walkthrough](walkthrough.md) builds a complete model step by step.
 
-It is built on FESTIM and used like it: an `ElectrostaticProblem` for the electric
+It extends FESTIM's classes and is used like FESTIM: an `ElectrostaticProblem` for the electric
 potential and a `ChargeTransportProblem` for the charge carriers, each with a mesh,
 subdomains, boundary conditions and exports.
 

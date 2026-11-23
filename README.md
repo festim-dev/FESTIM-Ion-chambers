@@ -1,7 +1,8 @@
 # ion_chambers
 
-A [FESTIM](https://github.com/festim-dev/FESTIM) model of tritium ionisation chambers
-(in-line process monitors). The goal is to reproduce existing measurements first, then
+A companion package for [FESTIM](https://github.com/festim-dev/FESTIM) to model
+tritium ionisation chambers (in-line process monitors). It adds charge carriers, an
+electric potential and chamber quantities to FESTIM's own classes. The goal is to reproduce existing measurements first, then
 use the validated model to explore chamber design: the linear range, memory effects
 and the detection threshold.
 

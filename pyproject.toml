@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ion_chambers"
 version = "0.1.0"
-description = "FESTIM model of a tritium ionisation chamber"
+description = "A companion package for FESTIM to model tritium ionisation chambers"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12"

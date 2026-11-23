@@ -1,4 +1,4 @@
-"""FESTIM model of a tritium ionisation chamber (process monitor)."""
+"""A companion package for FESTIM to model tritium ionisation chambers."""
 
 from ion_chambers import beta, constants
 from ion_chambers.charge_transport_problem import (

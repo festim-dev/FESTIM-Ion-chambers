@@ -1,45 +1,60 @@
 """FESTIM model of a tritium ionisation chamber (process monitor)."""
 
-import festim as _festim
-
-from ion_chambers._festim_check import check_festim as _check_festim
-
-_check_festim(_festim)
-
-from ion_chambers import beta, constants, wall_loss
-from ion_chambers.carrier_reaction import CarrierReaction
-from ion_chambers.cellwise_diffusion_material import CellwiseDiffusionMaterial
-from ion_chambers.charge_carrier import ChargeCarrier
-from ion_chambers.field import LaplaceField, PotentialSolver, SpaceChargePerturbation
-from ion_chambers.gas import Gas
+from ion_chambers import beta, constants
+from ion_chambers.charge_transport_problem import (
+    CellwiseDiffusionMaterial,
+    ChargeTransportProblem,
+    DiffusionFloor,
+    MobilityElectromigration,
+)
+from ion_chambers.electrostatic_problem import (
+    ElectrostaticProblem,
+    FixedPotentialBC,
+    PotentialExport,
+)
+from ion_chambers.exports import (
+    ChamberCurrent,
+    ChamberQuantity,
+    CollectionEfficiency,
+    ElectrodeCurrent,
+    IdealCurrent,
+    PairGeneration,
+    Recombination,
+    SpaceChargeField,
+    WallEfficiency,
+)
+from ion_chambers.gas import CarrierReaction, ChargeCarrier, Gas
 from ion_chambers.geometry import CoaxialChamber, Geometry
-from ion_chambers.mobility_electromigration import MobilityElectromigration
-from ion_chambers.model import IonChamberModel
-from ion_chambers.readout import Reading
 from ion_chambers.source import IonisationSource, TritiumInGas
-from ion_chambers.stabilisation import DiffusionFloor
 from ion_chambers.studies import response_curve, richardson, save_json
 
 __all__ = [
     "CarrierReaction",
     "CellwiseDiffusionMaterial",
+    "ChamberCurrent",
+    "ChamberQuantity",
     "ChargeCarrier",
+    "ChargeTransportProblem",
     "CoaxialChamber",
+    "CollectionEfficiency",
     "DiffusionFloor",
+    "ElectrodeCurrent",
+    "ElectrostaticProblem",
+    "FixedPotentialBC",
     "Gas",
     "Geometry",
-    "IonChamberModel",
+    "IdealCurrent",
     "IonisationSource",
-    "LaplaceField",
     "MobilityElectromigration",
-    "PotentialSolver",
-    "Reading",
-    "SpaceChargePerturbation",
+    "PairGeneration",
+    "PotentialExport",
+    "Recombination",
+    "SpaceChargeField",
     "TritiumInGas",
+    "WallEfficiency",
     "beta",
     "constants",
     "response_curve",
     "richardson",
     "save_json",
-    "wall_loss",
 ]

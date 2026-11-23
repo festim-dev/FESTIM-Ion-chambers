@@ -1,10 +1,13 @@
 """Helpers for parameter studies: mesh extrapolation, response curves, saving."""
 
+from __future__ import annotations
+
 import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from ion_chambers.model import IonChamberModel
+from ion_chambers.charge_transport_problem import ChargeTransportProblem
+from ion_chambers.exports import ChamberCurrent, ChamberQuantity
 
 
 def richardson(coarse: float, fine: float, order: int = 1, ratio: float = 2.0) -> float:
@@ -23,65 +26,75 @@ def richardson(coarse: float, fine: float, order: int = 1, ratio: float = 2.0) -
     return fine + (fine - coarse) / (ratio**order - 1)
 
 
+def find_chamber_current(problem: ChargeTransportProblem) -> ChamberCurrent:
+    """Returns the ChamberCurrent among the exports of a problem."""
+    for export in problem.exports:
+        if isinstance(export, ChamberCurrent):
+            return export
+    raise ValueError("the problem needs an ion_chambers.ChamberCurrent in its exports")
+
+
 def response_curve(
-    coarse_model: IonChamberModel,
-    fine_model: IonChamberModel,
+    coarse_problem: ChargeTransportProblem,
+    fine_problem: ChargeTransportProblem,
     activities: Sequence[float],
+    cell_size_ratio: float = 2.0,
     label: str = "",
 ) -> list[dict[str, float]]:
     """The chamber current against tritium activity, extrapolated from two meshes.
 
-    The two models must describe the same chamber and differ only in their
-    ``resolution``. Each is initialised once, then solved for every activity by
-    changing the activity of its first source.
+    The two problems must describe the same chamber on a coarse and on a fine mesh,
+    and each must have a :class:`ion_chambers.ChamberCurrent` among its exports. Each
+    is initialised once, then solved for every activity by changing the activity of
+    its first ionisation source.
 
     Args:
-        coarse_model: the model on the coarse mesh, not yet initialised
-        fine_model: the model on the fine mesh, not yet initialised
+        coarse_problem: the problem on the coarse mesh, not yet initialised
+        fine_problem: the problem on the fine mesh, not yet initialised
         activities: the activity concentrations (Bq/m3)
+        cell_size_ratio: the cell size of the coarse mesh divided by that of the fine
+            mesh
         label: a prefix for the progress lines
 
     Returns:
-        one row per activity: the fine-mesh reading as a dictionary, plus ``activity``,
-        ``current_coarse``, ``current_fine`` and ``current_extrapolated``
+        one row per activity, with ``activity``, ``current_coarse``, ``current_fine``,
+        ``current_extrapolated`` and the value of every chamber quantity exported by
+        the fine problem, keyed by its title
     """
-    coarse_readings = _solve_for_each_activity(coarse_model, activities, label)
-    fine_readings = _solve_for_each_activity(fine_model, activities, label)
-    cell_size_ratio = fine_model.resolution / coarse_model.resolution
+    _solve_for_each_activity(coarse_problem, activities, f"{label} coarse")
+    _solve_for_each_activity(fine_problem, activities, f"{label} fine")
+
+    coarse_current = find_chamber_current(coarse_problem)
+    fine_current = find_chamber_current(fine_problem)
 
     rows = []
     for i, activity in enumerate(activities):
-        coarse = coarse_readings[i]
-        fine = fine_readings[i]
-        row = fine.as_dict()
-        row["activity"] = float(activity)
-        row["current_coarse"] = coarse.current
-        row["current_fine"] = fine.current
+        row = {"activity": float(activity)}
+        row["current_coarse"] = coarse_current.data[i]
+        row["current_fine"] = fine_current.data[i]
         row["current_extrapolated"] = richardson(
-            coarse.current, fine.current, ratio=cell_size_ratio
+            coarse_current.data[i], fine_current.data[i], ratio=cell_size_ratio
         )
+        for export in fine_problem.exports:
+            if isinstance(export, ChamberQuantity):
+                row[export.title] = export.data[i]
         rows.append(row)
     return rows
 
 
 def _solve_for_each_activity(
-    model: IonChamberModel, activities: Sequence[float], label: str
-) -> list:
-    """Initialises a model and returns its reading at each activity."""
-    model.initialise()
-    readings = []
+    problem: ChargeTransportProblem, activities: Sequence[float], label: str
+) -> None:
+    """Initialises a problem and runs it at each activity."""
+    current = find_chamber_current(problem)
+    problem.initialise()
     for activity in activities:
-        model.sources[0].activity = activity
-        reading = model.run()
-        readings.append(reading)
+        problem.ionisation_sources[0].activity = activity
+        problem.run()
         print(
-            f"[{label}] resolution={model.resolution} activity={activity:.2e} Bq/m3 "
-            f"I/I_ideal={reading.current / reading.ideal_current:.4f} "
-            f"collection={reading.collection_efficiency:.4f} "
-            f"space charge={reading.space_charge_field:.3g}",
+            f"[{label}] activity={activity:.2e} Bq/m3 current={current.value:.4e} A",
             flush=True,
         )
-    return readings
 
 
 def save_json(data: object, path: str | Path) -> None:

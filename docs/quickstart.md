@@ -1,7 +1,13 @@
 # Quickstart
 
-A model is put together from four things: a geometry, a gas, one or more ionisation
-sources and a bias. Everything is in SI units: metres, volts, pascals, kelvin, Bq/m³.
+A calculation has two parts, used like FESTIM problems:
+
+1. an {class}`~ion_chambers.ElectrostaticProblem` gives the electric potential between
+   the electrodes
+2. a {class}`~ion_chambers.ChargeTransportProblem` moves the charge carriers of the gas
+   in that potential and gives the chamber current
+
+Everything is in SI units: metres, volts, pascals, kelvin, Bq/m³.
 
 ## 1. The geometry
 
@@ -11,7 +17,24 @@ import ion_chambers as ic
 chamber = ic.CoaxialChamber(rod_radius=1.5e-3, can_radius=0.05, length=0.127)
 ```
 
-## 2. The gas
+The chamber provides a mesh and three FESTIM subdomains: `chamber.gas`,
+`chamber.anode` (the rod) and `chamber.cathode` (the can).
+
+## 2. The electric potential
+
+```python
+electrostatics = ic.ElectrostaticProblem()
+electrostatics.mesh = chamber.create_mesh(resolution=120)
+electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+electrostatics.boundary_conditions = [
+    ic.FixedPotentialBC(subdomain=chamber.anode, value=500.0),  # V
+    ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+]
+electrostatics.initialise()
+electrostatics.run()
+```
+
+## 3. The gas
 
 The package ships no gas data, so you say what carries charge in your gas and how the
 carriers react. This is room air, with illustrative values:
@@ -44,40 +67,39 @@ air = ic.Gas(
 [Gas](guide/gas.md) explains each entry, and
 [Example: air](example_air.md) has a fuller version that follows the pressure.
 
-## 3. The source
+## 4. The source
 
 ```python
-tritium = ic.TritiumInGas(activity=3.7e10)  # Bq/m3, which is 1 Ci/m3
+tritium = ic.TritiumInGas(activity=3.7e10, geometry=chamber)  # Bq/m3, i.e. 1 Ci/m3
 ```
 
-## 4. The model
+Giving the geometry makes the source account for the beta energy lost to the walls.
+
+## 5. The transport of the charge carriers
+
+Results are obtained through exports, as in FESTIM: choose the quantities you want,
+add them to the problem, and read their `value` after the run.
 
 ```python
-model = ic.IonChamberModel(
-    geometry=chamber,
-    gas=air,
-    sources=tritium,
-    bias=500.0,  # V
-)
-model.initialise()
-reading = model.run()
+current = ic.ChamberCurrent(surface=chamber.anode)
+collection_efficiency = ic.CollectionEfficiency()
+wall_efficiency = ic.WallEfficiency()
 
-print(f"current               {reading.current:.3e} A")
-print(f"collection efficiency {reading.collection_efficiency:.4f}")
-print(f"wall efficiency       {reading.wall_efficiency:.4f}")
+transport = ic.ChargeTransportProblem()
+transport.electrostatic_problem = electrostatics
+transport.gas = air
+transport.ionisation_sources = [tritium]
+transport.exports = [current, collection_efficiency, wall_efficiency]
+transport.initialise()
+transport.run()
+
+print(f"current               {current.value:.3e} A")
+print(f"collection efficiency {collection_efficiency.value:.4f}")
+print(f"wall efficiency       {wall_efficiency.value:.4f}")
 ```
 
-## The two steps
-
-Nothing is computed when you create the objects. They only hold your input.
-
-`model.initialise()`
-: builds the mesh, solves the electric potential, runs the wall-loss Monte Carlo and
-  assembles the FESTIM problem. This takes a few seconds.
-
-`model.run()`
-: solves the steady state and returns a {class}`~ion_chambers.Reading`. This takes
-  about a second.
+`transport.initialise()` takes a few seconds, most of it for the wall-loss
+calculation. `transport.run()` takes about a second.
 
 ## Changing the activity
 
@@ -87,26 +109,30 @@ cheap:
 ```python
 for activity in [3.7e8, 3.7e10, 3.7e12]:
     tritium.activity = activity
-    reading = model.run()
-    print(activity, reading.current)
+    transport.run()
+    print(activity, current.value)
 ```
 
-Changing anything else (geometry, gas, bias, resolution) needs a new call to
-`model.initialise()`.
+Every run adds a value to `current.data`.
+
+Changing anything else (geometry, gas, potential, resolution) needs new problems. A
+problem is initialised once.
 
 ## Looking at the fields
 
-After a run, the densities of the charge carriers and the potential are DOLFINx
-functions:
+A `ChargeCarrier` is a FESTIM species, so after a run its density is available the
+FESTIM way, and the potential is the solution of the electrostatic problem:
 
 ```python
-densities = model.concentrations()  # {"e": ..., "P": ..., "N": ...} in 1/m3
-potential = model.potential  # V
+electron_density = electrons.post_processing_solution  # 1/m3
+potential = electrostatics.potential  # V
 ```
+
+To write them to files for ParaView, see [Results and exports](guide/exports.md).
 
 ## Mesh resolution
 
-`resolution` is the number of cells across the electrode gap (120 by default). The
-current converges at first order in the cell size, so a single mesh is not a converged
-answer. For numbers you intend to quote, extrapolate from two meshes: see
+`resolution` is the number of mesh cells across the electrode gap. The current
+converges at first order in the cell size, so a single mesh is not a converged answer.
+For numbers you intend to quote, extrapolate from two meshes: see
 [Parameter studies](guide/studies.md).

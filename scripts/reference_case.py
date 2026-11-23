@@ -101,13 +101,14 @@ def reference_chamber():
     )
 
 
-def build_transport_problem(chamber, bias, resolution):
+def build_transport_problem(chamber, bias, radial_cells, axial_cells):
     """Solves the potential of a chamber and sets up the transport problem in air.
 
     Args:
         chamber: the geometry, an ion_chambers.CoaxialChamber
         bias: the potential of the anode relative to the cathode (V)
-        resolution: the number of mesh cells across the electrode gap
+        radial_cells: the number of mesh cells from the rod to the can
+        axial_cells: the number of mesh cells from one end cap to the other
 
     Returns:
         the transport problem, an ion_chambers.ChargeTransportProblem that is not
@@ -116,7 +117,9 @@ def build_transport_problem(chamber, bias, resolution):
     """
     # 1. the electric potential
     electrostatics = ic.ElectrostaticProblem()
-    electrostatics.mesh = chamber.create_mesh(resolution=resolution)
+    electrostatics.mesh = chamber.create_mesh(
+        radial_cells=radial_cells, axial_cells=axial_cells
+    )
     electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
     electrostatics.boundary_conditions = [
         ic.FixedPotentialBC(subdomain=chamber.anode, value=bias),

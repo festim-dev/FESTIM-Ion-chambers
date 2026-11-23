@@ -10,7 +10,8 @@ from reference_case import air, reference_chamber
 import ion_chambers as ic
 
 BIAS = 500.0  # V, potential of the anode rod
-RESOLUTION = 100  # mesh cells across the electrode gap
+RADIAL_CELLS = 100  # mesh cells from the rod to the can
+AXIAL_CELLS = 60  # mesh cells from one end cap to the other
 ACTIVITIES = [3.7e4, 3.7e10, 3.7e13]  # Bq/m3
 
 chamber = reference_chamber()
@@ -18,7 +19,9 @@ chamber = reference_chamber()
 # ---- 1. the electric potential ---------------------------------------------------
 
 electrostatics = ic.ElectrostaticProblem()
-electrostatics.mesh = chamber.create_mesh(resolution=RESOLUTION)
+electrostatics.mesh = chamber.create_mesh(
+    radial_cells=RADIAL_CELLS, axial_cells=AXIAL_CELLS
+)
 electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
 electrostatics.boundary_conditions = [
     ic.FixedPotentialBC(subdomain=chamber.anode, value=BIAS),

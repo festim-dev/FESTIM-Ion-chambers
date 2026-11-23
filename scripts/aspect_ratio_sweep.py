@@ -18,20 +18,24 @@ from reference_case import build_transport_problem
 import ion_chambers as ic
 
 ASPECT_RATIOS = [0.4, 1.27, 7.0]  # length / diameter of the can
+# mesh cells from one end cap to the other on the coarse mesh, one per aspect ratio:
+# the long chamber needs more
+COARSE_AXIAL_CELLS = [90, 90, 150]
+COARSE_RADIAL_CELLS = 150  # mesh cells from the rod to the can
+REFINEMENT = 2  # the fine mesh has this many times more cells in both directions
 VOLUME = 1e-3  # m3
 ROD_RADIUS = 1.5e-3  # m
 BIAS = 500.0  # V, potential of the anode rod
-COARSE_RESOLUTION = 150  # mesh cells across the electrode gap
-FINE_RESOLUTION = 300
 OUTPUT_FILE = "results/aspect_ratio.json"
 
 # activity concentrations (Bq/m3): 1 mCi/m3, then 1e8 to 1e14
 ACTIVITIES = np.concatenate([[3.7e7], np.logspace(8, 14, 13)])
 
-cell_size_ratio = FINE_RESOLUTION / COARSE_RESOLUTION
 
 results = []
-for aspect_ratio in ASPECT_RATIOS:
+for aspect_ratio, coarse_axial_cells in zip(
+    ASPECT_RATIOS, COARSE_AXIAL_CELLS, strict=True
+):
     chamber = ic.CoaxialChamber.from_aspect_ratio(
         volume=VOLUME, rod_radius=ROD_RADIUS, aspect_ratio=aspect_ratio
     )
@@ -43,7 +47,12 @@ for aspect_ratio in ASPECT_RATIOS:
     # the problem on the coarse mesh, which only gives a current
     coarse_current = ic.ChamberCurrent(surface=chamber.anode)
 
-    coarse_problem = build_transport_problem(chamber, BIAS, COARSE_RESOLUTION)
+    coarse_problem = build_transport_problem(
+        chamber,
+        BIAS,
+        radial_cells=COARSE_RADIAL_CELLS,
+        axial_cells=coarse_axial_cells,
+    )
     coarse_problem.exports = [coarse_current]
     coarse_problem.initialise()
     coarse_tritium = coarse_problem.ionisation_sources[0]
@@ -55,7 +64,12 @@ for aspect_ratio in ASPECT_RATIOS:
     collection_efficiency = ic.CollectionEfficiency()
     space_charge_field = ic.SpaceChargeField()
 
-    fine_problem = build_transport_problem(chamber, BIAS, FINE_RESOLUTION)
+    fine_problem = build_transport_problem(
+        chamber,
+        BIAS,
+        radial_cells=REFINEMENT * COARSE_RADIAL_CELLS,
+        axial_cells=REFINEMENT * coarse_axial_cells,
+    )
     fine_problem.exports = [
         fine_current,
         ideal_current,
@@ -77,7 +91,7 @@ for aspect_ratio in ASPECT_RATIOS:
 
         # Richardson extrapolation of a first-order error to zero cell size
         difference = fine_current.value - coarse_current.value
-        extrapolated_current = fine_current.value + difference / (cell_size_ratio - 1)
+        extrapolated_current = fine_current.value + difference / (REFINEMENT - 1)
 
         print(f"  activity {activity:.2e} Bq/m3   current {extrapolated_current:.4e} A")
 

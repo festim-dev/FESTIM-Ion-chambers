@@ -17,14 +17,14 @@ from reference_case import build_transport_problem, reference_chamber
 import ion_chambers as ic
 
 BIASES = [250.0, 500.0, 1000.0]  # V, potential of the anode rod
-COARSE_RESOLUTION = 150  # mesh cells across the electrode gap
-FINE_RESOLUTION = 300
+COARSE_RADIAL_CELLS = 150  # mesh cells from the rod to the can
+COARSE_AXIAL_CELLS = 90  # mesh cells from one end cap to the other
+REFINEMENT = 2  # the fine mesh has this many times more cells in both directions
 OUTPUT_FILE = "results/bias.json"
 
 CURIE = ic.constants.BQ_PER_CI  # Bq
 ACTIVITIES = [1 * CURIE, 10 * CURIE, 100 * CURIE]  # Bq/m3
 
-cell_size_ratio = FINE_RESOLUTION / COARSE_RESOLUTION
 chamber = reference_chamber()
 
 results = []
@@ -34,7 +34,12 @@ for bias in BIASES:
     # the problem on the coarse mesh, which only gives a current
     coarse_current = ic.ChamberCurrent(surface=chamber.anode)
 
-    coarse_problem = build_transport_problem(chamber, bias, COARSE_RESOLUTION)
+    coarse_problem = build_transport_problem(
+        chamber,
+        bias,
+        radial_cells=COARSE_RADIAL_CELLS,
+        axial_cells=COARSE_AXIAL_CELLS,
+    )
     coarse_problem.exports = [coarse_current]
     coarse_problem.initialise()
     coarse_tritium = coarse_problem.ionisation_sources[0]
@@ -46,7 +51,12 @@ for bias in BIASES:
     collection_efficiency = ic.CollectionEfficiency()
     space_charge_field = ic.SpaceChargeField()
 
-    fine_problem = build_transport_problem(chamber, bias, FINE_RESOLUTION)
+    fine_problem = build_transport_problem(
+        chamber,
+        bias,
+        radial_cells=REFINEMENT * COARSE_RADIAL_CELLS,
+        axial_cells=REFINEMENT * COARSE_AXIAL_CELLS,
+    )
     fine_problem.exports = [
         fine_current,
         ideal_current,
@@ -68,7 +78,7 @@ for bias in BIASES:
 
         # Richardson extrapolation of a first-order error to zero cell size
         difference = fine_current.value - coarse_current.value
-        extrapolated_current = fine_current.value + difference / (cell_size_ratio - 1)
+        extrapolated_current = fine_current.value + difference / (REFINEMENT - 1)
 
         print(f"  activity {activity:.2e} Bq/m3   current {extrapolated_current:.4e} A")
 

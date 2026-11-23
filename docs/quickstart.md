@@ -24,7 +24,7 @@ The chamber provides a mesh and three FESTIM subdomains: `chamber.gas`,
 
 ```python
 electrostatics = ic.ElectrostaticProblem()
-electrostatics.mesh = chamber.create_mesh(resolution=120)
+electrostatics.mesh = chamber.create_mesh(radial_cells=120, axial_cells=72)
 electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
 electrostatics.boundary_conditions = [
     ic.FixedPotentialBC(subdomain=chamber.anode, value=500.0),  # V
@@ -115,7 +115,7 @@ for activity in [3.7e8, 3.7e10, 3.7e12]:
 
 Every run adds a value to `current.data`.
 
-Changing anything else (geometry, gas, potential, resolution) needs new problems. A
+Changing anything else (geometry, gas, potential, mesh) needs new problems. A
 problem is initialised once.
 
 ## Looking at the fields
@@ -132,7 +132,7 @@ To write them to files for ParaView, see [Results and exports](guide/exports.md)
 
 ## Mesh resolution
 
-`resolution` is the number of mesh cells across the electrode gap. The current
-converges at first order in the cell size, so a single mesh is not a converged answer.
+`radial_cells` is the number of mesh cells from the rod to the can and `axial_cells`
+the number from one end cap to the other. The current converges at first order in the cell size, so a single mesh is not a converged answer.
 For numbers you intend to quote, extrapolate from two meshes: see
 [Parameter studies](guide/studies.md).

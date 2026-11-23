@@ -12,14 +12,12 @@ to zero cell size removes most of it. This is Richardson extrapolation of a
 first-order error:
 
 ```python
-cell_size_ratio = fine_resolution / coarse_resolution
-
 difference = fine_current.value - coarse_current.value
-extrapolated_current = fine_current.value + difference / (cell_size_ratio - 1)
+extrapolated_current = fine_current.value + difference / (refinement - 1)
 ```
 
-With a fine mesh of twice the resolution, the ratio is 2 and this is
-`2 * fine - coarse`. The difference between the fine and the extrapolated value is a
+Here `refinement` is how many times more cells the fine mesh has in both directions.
+With twice as many, this is `2 * fine - coarse`. The difference between the fine and the extrapolated value is a
 measure of the error that remains.
 
 ## Changing the activity between runs
@@ -65,5 +63,5 @@ python scripts/aspect_ratio_sweep.py   # chamber shape at fixed volume
 ```
 
 Each script is a plain sequence of steps with its parameters at the top. Edit those to
-change the case. With the default resolutions of 150 and 300 cells, expect seconds to
+change the case. With the default meshes of 150 and 300 radial cells, expect seconds to
 minutes per case.

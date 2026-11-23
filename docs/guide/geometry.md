@@ -26,7 +26,7 @@ The model is 2D axisymmetric: the mesh covers the (r, z) half section of the gas
 The chamber gives you what a FESTIM-style problem needs:
 
 ```python
-mesh = chamber.create_mesh(resolution=120)  # a festim.Mesh, cylindrical
+mesh = chamber.create_mesh(radial_cells=120, axial_cells=72)  # a festim.Mesh
 chamber.gas  # festim.VolumeSubdomain, the gas
 chamber.anode  # festim.SurfaceSubdomain, the rod
 chamber.cathode  # festim.SurfaceSubdomain, the can and end caps
@@ -51,8 +51,9 @@ The 1 L chamber used for the [prototype results](../results.md) is defined in
 
 The mesh is graded so that cells are small where the field is strong: the radial
 spacing grows in proportion to r, and the axial spacing is refined towards the end
-caps. `resolution` is the number of radial cells. The number of axial cells follows
-from it unless you set `axial_cells`.
+caps. `radial_cells` is the number of cells from the rod to the can and `axial_cells`
+the number from one end cap to the other. For the axial count, 0.6 to 1 times the
+radial count is a reasonable start, more for a long chamber.
 
 ## Adding a geometry
 

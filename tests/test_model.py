@@ -11,15 +11,20 @@ pytestmark = pytest.mark.slow
 
 def electron_ion_gas(mobility=0.04) -> ic.Gas:
     """A non-attaching gas: electrons and positive ions only."""
+    electrons = ic.ChargeCarrier(
+        name="e", charge=-1, mobility=mobility, diffusivity=0.04
+    )
+    positive_ions = ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4)
+    recombination = ic.CarrierReaction(
+        reactant=[positive_ions, electrons], rate=2.0e-13
+    )
     return ic.Gas(
         name="non-attaching",
         w_value=33.97,
         density=1.205,
-        carriers=[
-            ic.ChargeCarrier(name="e", charge=-1, mobility=mobility, diffusivity=0.04),
-            ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4),
-        ],
-        reactions=[ic.Reaction(reactants=["P", "e"], rate=2.0e-13)],
+        carriers=[electrons, positive_ions],
+        ionisation_products=(electrons, positive_ions),
+        reactions=[recombination],
     )
 
 

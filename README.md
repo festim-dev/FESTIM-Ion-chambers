@@ -27,9 +27,26 @@ python scripts/quick_check.py
 
 ## Example
 
+The package is used like FESTIM: an `ElectrostaticProblem` gives the electric
+potential, then a `ChargeTransportProblem` moves the charge carriers in it.
+
 ```python
 import ion_chambers as ic
 
+chamber = ic.CoaxialChamber(rod_radius=1.5e-3, can_radius=0.05, length=0.127)
+
+# 1. the electric potential
+electrostatics = ic.ElectrostaticProblem()
+electrostatics.mesh = chamber.create_mesh(resolution=120)
+electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+electrostatics.boundary_conditions = [
+    ic.FixedPotentialBC(subdomain=chamber.anode, value=500.0),  # V
+    ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+]
+electrostatics.initialise()
+electrostatics.run()
+
+# 2. the gas: you define the charge carriers and their reactions
 electrons = ic.ChargeCarrier(name="e", charge=-1, mobility=0.04, diffusivity=0.04)
 positive_ions = ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4)
 negative_ions = ic.ChargeCarrier(name="N", charge=-1, mobility=2.2e-4)
@@ -49,22 +66,27 @@ air = ic.Gas(
     ],
 )
 
-model = ic.IonChamberModel(
-    geometry=ic.CoaxialChamber(rod_radius=1.5e-3, can_radius=0.05, length=0.127),
-    gas=air,
-    sources=ic.TritiumInGas(activity=3.7e10),  # Bq/m3
-    bias=500.0,  # V
-)
-model.initialise()
-reading = model.run()
-print(reading.current, reading.collection_efficiency)
+# 3. the transport of the charge carriers
+current = ic.ChamberCurrent(surface=chamber.anode)
+collection_efficiency = ic.CollectionEfficiency()
+
+transport = ic.ChargeTransportProblem()
+transport.electrostatic_problem = electrostatics
+transport.gas = air
+transport.ionisation_sources = [
+    ic.TritiumInGas(activity=3.7e10, geometry=chamber)  # Bq/m3
+]
+transport.exports = [current, collection_efficiency]
+transport.initialise()
+transport.run()
+
+print(current.value, collection_efficiency.value)
 ```
 
-A model is composed of a geometry, a gas, one or more ionisation sources, a potential
-solver and a bias. The package ships no gas data: you define the charge carriers and
-their reactions, as above. `ChargeCarrier` and `CarrierReaction` are children of
-FESTIM's `Species` and `GenericReaction`. `scripts/reference_case.py` is a fuller air example that
-follows the pressure. The documentation explains each part.
+The classes are children of FESTIM's: the problems, `ChargeCarrier` (a species),
+`CarrierReaction` (a reaction), `FixedPotentialBC` and the exports. The package ships
+no gas data: `scripts/reference_case.py` is a fuller air example that follows the
+pressure.
 
 ## Documentation
 
@@ -90,13 +112,13 @@ docs/                documentation (Sphinx)
 ## Running the studies
 
 ```bash
-python scripts/response_curve.py                 # current vs activity, reference chamber
-python scripts/aspect_ratio_sweep.py 0.4 1.27 7  # L/D sweep at 1 L
-python scripts/bias_sweep.py 250 500 1000        # saturation curve
+python scripts/response_curve.py       # current vs activity, reference chamber
+python scripts/aspect_ratio_sweep.py   # L/D sweep at 1 L
+python scripts/bias_sweep.py           # saturation curve
 ```
 
-Each solve takes seconds to minutes. Currents are extrapolated from 150 and 300 radial
-cells.
+Each script is a plain sequence of steps with its parameters at the top. Each solve
+takes seconds to minutes. Currents are extrapolated from 150 and 300 radial cells.
 
 ## Known gaps before validation
 

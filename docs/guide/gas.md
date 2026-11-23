@@ -54,19 +54,19 @@ Ionisation products
 ## Relation to FESTIM
 
 `ChargeCarrier` is a child of `festim.Species`, and `CarrierReaction` is a child of
-`festim.GenericReaction`. They take part in the FESTIM problem directly, and their
-arguments (`reactant`, `product`) are named as in FESTIM.
+`festim.GenericReaction`. The transport problem passes them to FESTIM as they are, and
+their arguments (`reactant`, `product`) are named as in FESTIM.
 
 They add what a chamber needs:
 
 - A `ChargeCarrier` has a `charge`, a `mobility` and a `diffusivity`.
-- A `CarrierReaction` is created without a volume subdomain, because the gas volume
-  only exists once the model is initialised. Its `rate` may depend on the reduced
+- A `CarrierReaction` is created without a volume subdomain. The transport problem
+  assigns its own gas volume when it is initialised. Its `rate` may depend on the reduced
   electric field, which FESTIM's rate coefficients do not support.
 
-Like any FESTIM species, a carrier holds the solution of the model it belongs to. Do
-not share one gas between two models that you use at the same time. Build a gas for
-each, for instance with a function that returns a new `Gas`.
+Like any FESTIM species, a carrier holds the solution of the problem it belongs to. Do
+not share one gas between two transport problems. Build a gas for each, for instance
+with a function that returns a new `Gas`.
 
 ## Pressure and temperature
 
@@ -101,8 +101,8 @@ electron = ic.ChargeCarrier(
 This is how tabulated swarm data (for example from a Boltzmann solver) enters the
 model: wrap the table in a function that interpolates it.
 
-After `model.initialise()`, `model.reduced_field` holds E/N in every cell, which helps
-to check that your data covers the range the chamber actually sees.
+After `transport.initialise()`, `transport.reduced_field` holds E/N in every cell,
+which helps to check that your data covers the range the chamber actually sees.
 
 ## Impurities
 

@@ -14,7 +14,15 @@ extensions = [
 
 # FEniCSx and FESTIM only install through conda. Mocking them lets the documentation
 # build from a plain pip environment (see .github/workflows/docs.yml).
-autodoc_mock_imports = ["festim", "dolfinx", "ufl", "basix", "mpi4py", "petsc4py"]
+autodoc_mock_imports = [
+    "festim",
+    "dolfinx",
+    "ufl",
+    "basix",
+    "mpi4py",
+    "petsc4py",
+    "scifem",
+]
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 napoleon_google_docstring = True

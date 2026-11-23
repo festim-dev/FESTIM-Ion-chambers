@@ -10,8 +10,9 @@ threshold.
   ([results](results.md)).
 - Measurements digitised from the published figures
   ([experimental data](experimental_data.md)).
-- Package restructured into separate geometry, gas, source, field, stabilisation, model
-  and reading components, with a test suite and this documentation.
+- Package restructured along the lines of FESTIM: an electrostatic problem and a
+  charge transport problem, with FESTIM-style subdomains, boundary conditions and
+  exports, a test suite and this documentation.
 
 ## Next
 
@@ -23,8 +24,9 @@ threshold.
    instead of analytic cylinders.
 3. **The real 1 L monitor.** Its geometry, then the first comparison with the N₂
    calibration data.
-4. **Space-charge coupling.** A potential solver that iterates between the transport
-   problem and Poisson's equation, to extend the model beyond a few tens of Ci/m³.
+4. **Space-charge coupling.** A class that iterates between the transport problem and
+   the electrostatic problem, as FESTIM couples heat transfer and hydrogen transport,
+   to extend the model beyond a few tens of Ci/m³.
 
 ## Later
 
@@ -45,5 +47,8 @@ threshold.
 
 - The numerical helpers assume a 2D triangular mesh.
 - The wall-loss projection and the stabilisation run on one MPI rank only.
-- The model is built on FESTIM's `HydrogenTransportProblem`. FESTIM plans to make
-  its discontinuous formulation the only one, and this package will have to follow.
+- `ChargeTransportProblem` is a child of FESTIM's `HydrogenTransportProblem`. FESTIM
+  plans to make its discontinuous formulation the only one, and this package will
+  have to follow.
+- The electrodes are read as two surfaces, one above and one below the mean
+  potential. More than two electrodes are not supported.

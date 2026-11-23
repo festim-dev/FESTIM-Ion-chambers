@@ -1,7 +1,7 @@
 # Ionisation sources
 
-A source says where ion pairs are created and how fast. A model takes one source or a
-list of them, and adds their contributions.
+A source says where ion pairs are created and how fast. A transport problem takes a
+list of them in `ionisation_sources`, and adds their contributions.
 
 ## Tritium in the gas
 
@@ -10,7 +10,7 @@ list of them, and adds their contributions.
 ```python
 import ion_chambers as ic
 
-source = ic.TritiumInGas(activity=3.7e10)  # Bq/m3
+tritium = ic.TritiumInGas(activity=3.7e10, geometry=chamber)  # Bq/m3
 ```
 
 To convert from curies, `ic.constants.BQ_PER_CI` is 3.7 × 10¹⁰.
@@ -30,24 +30,25 @@ For the reference 1 L chamber in air, 98.9% of the beta energy stays in the gas.
 loss grows when the gas is thinner (lower pressure, lighter gas) or the chamber
 smaller, because the range of the betas scales inversely with the gas density.
 
-Options:
+The source needs the chamber geometry for this, which is why it is given to the
+source. Without a geometry, wall losses are ignored:
 
 ```python
-ic.TritiumInGas(activity=3.7e10, wall_loss=False)  # every beta stops in the gas
-ic.TritiumInGas(activity=3.7e10, n_rays=10000)  # more betas per point (default 3000)
+ic.TritiumInGas(activity=3.7e10)  # every beta stops in the gas
+ic.TritiumInGas(activity=3.7e10, geometry=chamber, n_rays=10000)  # more betas per point
 ```
 
-The Monte Carlo is the slowest part of `model.initialise()`. Its result depends only on
-the geometry and the gas density, and is cached, so sweeping the bias or the activity
-pays for it once.
+The Monte Carlo is the slowest part of `transport.initialise()`. Its result depends
+only on the shape of the chamber and the gas density, and is kept in memory, so
+sweeping the bias or the activity pays for it once.
 
 The method's assumptions are listed in [Theory](../theory.md#wall-losses).
 
 ## Changing the activity
 
 ```python
-model.sources[0].activity = 3.7e11
-reading = model.run()
+tritium.activity = 3.7e11
+transport.run()
 ```
 
 No call to `initialise()` is needed in between.

@@ -10,23 +10,20 @@ data/experimental/   digitised measurements
 docs/                this documentation
 ```
 
-Inside the package, each module holds one kind of object:
+The package mirrors FESTIM: problem classes that are set up with a mesh, subdomains,
+boundary conditions and exports, then initialised and run.
 
 | Module | Content |
 |---|---|
+| `electrostatic_problem.py` | `ElectrostaticProblem`, `FixedPotentialBC`, `PotentialExport` |
+| `charge_transport_problem.py` | `ChargeTransportProblem`, the stabilisation, and two children of FESTIM's drift term and material |
+| `exports.py` | the chamber quantities, children of FESTIM's `DerivedQuantity` |
+| `gas.py` | `Gas`, `ChargeCarrier` (a `festim.Species`), `CarrierReaction` (a `festim.GenericReaction`) |
 | `geometry.py` | `Geometry`, `CoaxialChamber` |
-| `gas.py` | `Gas` |
-| `charge_carrier.py` | `ChargeCarrier`, a child of `festim.Species` |
-| `carrier_reaction.py` | `CarrierReaction`, a child of `festim.GenericReaction` |
-| `coefficient.py` | the type of a coefficient that may depend on E/N |
-| `beta.py`, `wall_loss.py` | beta spectrum, range, wall-loss Monte Carlo |
 | `source.py` | `IonisationSource`, `TritiumInGas` |
-| `field.py` | potential solvers |
-| `stabilisation.py` | `DiffusionFloor` |
-| `model.py` | `IonChamberModel` |
-| `readout.py` | `Reading` and the functions that compute it |
+| `beta.py` | beta spectrum, range, wall-loss Monte Carlo |
 | `studies.py` | mesh extrapolation and response curves |
-| `mobility_electromigration.py`, `cellwise_diffusion_material.py` | children of FESTIM's drift term and material |
+| `constants.py` | physical constants |
 
 ## Tests
 
@@ -36,8 +33,8 @@ python -m pytest -m "not slow"        # unit tests only
 python -m pytest tests/test_gas.py -k pressure
 ```
 
-Tests marked `slow` solve a full model. `tests/test_model.py` includes a regression
-against the currents of the original prototype.
+Tests marked `slow` solve full problems. `tests/test_charge_transport_problem.py`
+includes a regression against the currents of the original prototype.
 
 ## Style
 
@@ -48,7 +45,11 @@ ruff check src tests scripts
 
 The conventions follow FESTIM's: annotated signatures, Google-style docstrings without
 types, input validated when an object is created with an error naming the attribute
-and the type received, and small tests with one assertion each.
+and the type received, and small tests with one assertion each and a one-sentence
+docstring.
+
+Clarity comes before brevity: prefer plain loops and named intermediate values to
+compact constructs.
 
 ## Documentation
 

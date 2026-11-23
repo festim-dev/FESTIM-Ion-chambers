@@ -9,6 +9,10 @@ charges out before they recombine, and the current that flows is the reading. Th
 package solves for the charge densities in the chamber and predicts that current from
 the geometry, the gas, the bias and the tritium activity.
 
+It is built on FESTIM and used like it: an `ElectrostaticProblem` for the electric
+potential and a `ChargeTransportProblem` for the charge carriers, each with a mesh,
+subdomains, boundary conditions and exports.
+
 :::{admonition} Status: prototype
 :class: warning
 The model runs for a generic coaxial chamber in air. It has **not yet been compared
@@ -24,7 +28,8 @@ with measurements**: the real vessel geometry and the carrier gases of the exper
   built in.
 - Account for the beta energy lost to the walls with a Monte Carlo over the tritium
   spectrum.
-- Predict the chamber current, the collection efficiency and the wall-loss efficiency.
+- Predict the chamber current, the collection efficiency and the wall-loss efficiency,
+  as FESTIM-style exports.
 - Report how much the space charge would distort the field, so you know when the
   fixed-field assumption stops holding.
 - Run response curves (current against activity), saturation curves (current against
@@ -44,10 +49,11 @@ example_air
 :maxdepth: 1
 
 guide/geometry
+guide/electrostatics
 guide/gas
 guide/sources
-guide/field
-guide/reading
+guide/transport
+guide/exports
 guide/studies
 ```
 

@@ -15,7 +15,8 @@ with $D_s$ the diffusion coefficient, $\mu_s$ the mobility, $z_s$ the charge num
 and $\varphi$ the electric potential. $S_s$ is the ionisation source and $R_s$ the net
 production by reactions. The drift term is FESTIM's `ElectromigrationTerm`, with the
 velocity set by the mobility
-({class}`~ion_chambers.MobilityElectromigration`).
+({class}`~ion_chambers.MobilityElectromigration`). This is what
+{class}`~ion_chambers.ChargeTransportProblem` solves.
 
 For air, the three balances are
 
@@ -34,7 +35,8 @@ created, so nearly all the negative charge travels as slow ions.
 
 ## Electric potential
 
-The potential solves Laplace's equation, $\nabla^2 \varphi = 0$, with $\varphi = V$ on
+The potential is the solution of an {class}`~ion_chambers.ElectrostaticProblem`. It
+solves Laplace's equation, $\nabla^2 \varphi = 0$, with $\varphi = V$ on
 the anode, $\varphi = 0$ on the cathode and no normal field on the insulators. The
 charge in the gas is not fed back into the potential.
 
@@ -47,7 +49,7 @@ $$
 $$
 
 and the ratio $\lVert \nabla\varphi_1 \rVert / \lVert \nabla\varphi \rVert$ is
-reported with every reading.
+reported by the export {class}`~ion_chambers.SpaceChargeField`.
 
 ## Source
 

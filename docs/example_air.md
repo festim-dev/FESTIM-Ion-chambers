@@ -3,9 +3,10 @@
 The package does not ship any gas data. You describe the gas yourself, so that every
 number in a result is one you chose and can check.
 
-This page shows a complete example: room air, and the 1 L chamber used for the
-[prototype results](results.md). It is the file `scripts/reference_case.py`, which the
-scripts in that folder import. Copy it as a starting point for your own gas.
+This page shows a complete example: room air, the 1 L chamber used for the
+[prototype results](results.md), and a function that sets up the two problems for
+them. It is the file `scripts/reference_case.py`, which the scripts in that folder
+import. Copy it as a starting point for your own gas.
 
 :::{warning}
 The values below are reasonable starting points, not validated reference data. The
@@ -51,10 +52,6 @@ from reference_case import air, reference_chamber
 
 import ion_chambers as ic
 
-model = ic.IonChamberModel(
-    geometry=reference_chamber(),
-    gas=air(pressure=50_000.0),
-    sources=ic.TritiumInGas(activity=3.7e10),
-    bias=500.0,
-)
+chamber = reference_chamber()
+gas = air(pressure=50_000.0)  # Pa
 ```

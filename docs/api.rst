@@ -3,14 +3,18 @@ API reference
 
 Everything below is available from the top-level package: ``import ion_chambers as ic``.
 
-Model
------
+Problems
+--------
 
-.. autoclass:: ion_chambers.IonChamberModel
-   :members: initialise, run, concentrations
+.. autoclass:: ion_chambers.ElectrostaticProblem
+   :members: potential, initialise
 
-.. autoclass:: ion_chambers.Reading
-   :members: as_dict
+.. autoclass:: ion_chambers.FixedPotentialBC
+
+.. autoclass:: ion_chambers.PotentialExport
+
+.. autoclass:: ion_chambers.ChargeTransportProblem
+   :members: initialise
 
 Geometry
 --------
@@ -19,7 +23,8 @@ Geometry
    :members:
 
 .. autoclass:: ion_chambers.CoaxialChamber
-   :members: from_volume, from_aspect_ratio, volume, default_axial_cells, build_mesh
+   :members: from_volume, from_aspect_ratio, volume, default_axial_cells, create_mesh,
+      is_anode, is_cathode
 
 Gas
 ---
@@ -32,7 +37,7 @@ Gas
 .. autoclass:: ion_chambers.CarrierReaction
    :members: is_recombination
 
-.. autodata:: ion_chambers.coefficient.Coefficient
+.. autodata:: ion_chambers.gas.Coefficient
 
 Sources
 -------
@@ -42,40 +47,47 @@ Sources
 
 .. autoclass:: ion_chambers.TritiumInGas
 
+.. autofunction:: ion_chambers.source.lumped_projection
+
+Exports
+-------
+
+.. autoclass:: ion_chambers.ChamberQuantity
+   :members: compute, evaluate
+
+.. autoclass:: ion_chambers.ChamberCurrent
+
+.. autoclass:: ion_chambers.ElectrodeCurrent
+
+.. autoclass:: ion_chambers.IdealCurrent
+
+.. autoclass:: ion_chambers.WallEfficiency
+
+.. autoclass:: ion_chambers.CollectionEfficiency
+
+.. autoclass:: ion_chambers.PairGeneration
+
+.. autoclass:: ion_chambers.Recombination
+
+.. autoclass:: ion_chambers.SpaceChargeField
+
+Stabilisation and FESTIM extensions
+-----------------------------------
+
+.. autoclass:: ion_chambers.DiffusionFloor
+   :members:
+
+.. autofunction:: ion_chambers.charge_transport_problem.cell_field_length
+
+.. autoclass:: ion_chambers.MobilityElectromigration
+
+.. autoclass:: ion_chambers.CellwiseDiffusionMaterial
+
 Beta spectrum and wall losses
 -----------------------------
 
 .. automodule:: ion_chambers.beta
    :members:
-
-.. automodule:: ion_chambers.wall_loss
-   :members:
-
-Electric field
---------------
-
-.. autoclass:: ion_chambers.PotentialSolver
-   :members:
-
-.. autoclass:: ion_chambers.LaplaceField
-
-.. autoclass:: ion_chambers.SpaceChargePerturbation
-   :members:
-
-Stabilisation
--------------
-
-.. autoclass:: ion_chambers.DiffusionFloor
-   :members:
-
-.. autofunction:: ion_chambers.stabilisation.cell_field_length
-
-Readout functions
------------------
-
-.. automodule:: ion_chambers.readout
-   :members:
-   :exclude-members: Reading
 
 Parameter studies
 -----------------
@@ -85,24 +97,6 @@ Parameter studies
 .. autofunction:: ion_chambers.response_curve
 
 .. autofunction:: ion_chambers.save_json
-
-Other FESTIM extensions
------------------------
-
-``ChargeCarrier`` and ``CarrierReaction`` above are also children of FESTIM classes.
-
-.. autoclass:: ion_chambers.MobilityElectromigration
-
-.. autoclass:: ion_chambers.CellwiseDiffusionMaterial
-
-Helpers
--------
-
-.. automodule:: ion_chambers.integration
-   :members:
-
-.. automodule:: ion_chambers.projection
-   :members:
 
 Constants
 ---------

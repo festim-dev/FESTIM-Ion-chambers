@@ -1,9 +1,13 @@
 """Quantities computed from a solved transport problem.
 
-They are used like FESTIM's derived quantities: create them, add them to the
-``exports`` of a :class:`ion_chambers.ChargeTransportProblem`, and read ``value``
-after ``run()``. ``data`` keeps the value of every run, and a ``filename`` writes
-them to a csv file.
+They are used like FESTIM's derived quantities: create them with the surface or the
+volume they are computed on, add them to the ``exports`` of a
+:class:`ion_chambers.ChargeTransportProblem`, and read ``value`` after ``run()``.
+``data`` keeps the value of every run, and a ``filename`` writes them to a csv file.
+
+FESTIM's quantities are computed from the field of one species. The quantities here
+involve every charge carrier and the electric potential, so they take no field and
+their ``compute`` takes the whole problem.
 
 FESTIM's field exports work too, for instance ``festim.SpeciesExport`` to write the
 density of a carrier to a file. Of FESTIM's derived quantities, only
@@ -22,7 +26,6 @@ from scifem import assemble_scalar
 
 from ion_chambers.constants import E_CHARGE
 from ion_chambers.electrostatic_problem import ElectrostaticProblem, FixedPotentialBC
-from ion_chambers.gas import ChargeCarrier
 
 # The transport problem imports this module, so importing it here at runtime would be
 # a circular import. It is only needed for the annotations.
@@ -30,64 +33,20 @@ if TYPE_CHECKING:
     from ion_chambers.charge_transport_problem import ChargeTransportProblem
 
 
-def integration_weight(problem: ChargeTransportProblem):
-    """The factor 2 pi r of a cylindrical mesh, or 1 on a cartesian mesh."""
-    return problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
+def _charge_flux(problem: ChargeTransportProblem):
+    """The net flux of charge, in units of the elementary charge (1/m2/s).
 
-
-def carrier_flux(problem: ChargeTransportProblem, carrier: ChargeCarrier):
-    """The Nernst-Planck number flux of a carrier (1/m2/s), a ufl expression."""
-    density = carrier.post_processing_solution
-    mobility = problem.mobilities[carrier.name]
-    diffusivity = problem.diffusivities[carrier.name]
-    velocity = -carrier.charge * mobility * ufl.grad(problem.potential)
-    return -diffusivity * ufl.grad(density) + density * velocity
-
-
-def charge_flux(problem: ChargeTransportProblem):
-    """The net flux of charge, in units of the elementary charge (1/m2/s)."""
+    The sum over the carriers of the charge number times the Nernst-Planck flux
+    ``-D grad(c) + c v``, with the drift velocity ``v = -z mu grad(potential)``.
+    """
     total = 0
     for carrier in problem.gas.carriers:
-        total = total + carrier.charge * carrier_flux(problem, carrier)
-    return total
-
-
-def net_charge_density(problem: ChargeTransportProblem):
-    """The net charge number density (1/m3), a ufl expression."""
-    total = 0
-    for carrier in problem.gas.carriers:
-        total = total + carrier.charge * carrier.post_processing_solution
-    return total
-
-
-def generation_rate(problem: ChargeTransportProblem) -> float:
-    """The production rate of ion pairs in the whole gas volume (1/s)."""
-    weight = integration_weight(problem)
-    dx = problem.dx(problem.gas_volume.id)
-    return assemble_scalar(weight * problem.pair_production * dx)
-
-
-def recombination_rate(problem: ChargeTransportProblem) -> float:
-    """The loss rate of ion pairs to recombination in the whole gas volume (1/s)."""
-    weight = integration_weight(problem)
-    dx = problem.dx(problem.gas_volume.id)
-    total = 0.0
-    for i, reaction in enumerate(problem.gas.reactions):
-        if not reaction.is_recombination:
-            continue
-        # mass action: the rate coefficient times the density of every reactant
-        local_rate = problem.rates[i]
-        for carrier in reaction.reactant:
-            local_rate = local_rate * carrier.post_processing_solution
-        total += assemble_scalar(weight * local_rate * dx)
-    return total
-
-
-def ideal_pair_rate(problem: ChargeTransportProblem) -> float:
-    """The pair production rate (1/s) if no beta energy were lost to the walls."""
-    total = 0.0
-    for source in problem.ionisation_sources:
-        total += source.ideal_pair_rate(problem.gas, problem.volume_of_gas)
+        density = carrier.post_processing_solution
+        mobility = problem.mobilities[carrier.name]
+        diffusivity = problem.diffusivities[carrier.name]
+        velocity = -carrier.charge * mobility * ufl.grad(problem.potential)
+        flux = -diffusivity * ufl.grad(density) + density * velocity
+        total = total + carrier.charge * flux
     return total
 
 
@@ -116,7 +75,52 @@ class ChamberQuantity(F.exports.DerivedQuantity):
         raise NotImplementedError
 
 
-class ChamberCurrent(ChamberQuantity):
+class ChamberSurfaceQuantity(ChamberQuantity):
+    """Base class of the quantities computed on a surface, the counterpart of
+    :class:`festim.SurfaceQuantity`.
+
+    Args:
+        surface: the surface subdomain
+        filename: the name of a csv or txt file to write the values to, optional
+
+    Attributes:
+        surface: the surface subdomain
+    """
+
+    def __init__(
+        self, surface: F.SurfaceSubdomain, filename: str | None = None
+    ) -> None:
+        super().__init__(filename=filename)
+        if not isinstance(surface, F.SurfaceSubdomain):
+            raise TypeError(
+                f"surface must be a festim.SurfaceSubdomain, "
+                f"not {type(surface).__name__}"
+            )
+        self.surface = surface
+
+
+class ChamberVolumeQuantity(ChamberQuantity):
+    """Base class of the quantities computed in a volume, the counterpart of
+    :class:`festim.VolumeQuantity`.
+
+    Args:
+        volume: the volume subdomain
+        filename: the name of a csv or txt file to write the values to, optional
+
+    Attributes:
+        volume: the volume subdomain
+    """
+
+    def __init__(self, volume: F.VolumeSubdomain, filename: str | None = None) -> None:
+        super().__init__(filename=filename)
+        if not isinstance(volume, F.VolumeSubdomain):
+            raise TypeError(
+                f"volume must be a festim.VolumeSubdomain, not {type(volume).__name__}"
+            )
+        self.volume = volume
+
+
+class ChamberCurrent(ChamberSurfaceQuantity):
     r"""The current the chamber reads (A), from the Shockley-Ramo theorem.
 
     .. math::
@@ -125,8 +129,8 @@ class ChamberCurrent(ChamberQuantity):
 
     where the weighting potential :math:`\varphi_w` is 1 on the readout electrode and
     0 on the other one. In steady state this equals the current through either
-    electrode. Being a volume integral, it does not suffer from the error of the
-    gradient at the boundary, which is why it is the recommended reading.
+    electrode. Being an integral over the gas, it does not suffer from the error of
+    the gradient at the boundary, which is why it is the recommended reading.
 
     The sign follows the potential of the readout electrode: positive when it is the
     more positive electrode.
@@ -135,12 +139,6 @@ class ChamberCurrent(ChamberQuantity):
         surface: the surface of the readout electrode
         filename: the name of a csv or txt file to write the values to, optional
     """
-
-    def __init__(
-        self, surface: F.SurfaceSubdomain, filename: str | None = None
-    ) -> None:
-        super().__init__(filename=filename)
-        self.surface = surface
 
     @property
     def title(self) -> str:
@@ -162,20 +160,21 @@ class ChamberCurrent(ChamberQuantity):
                 "electrostatic problem"
             )
         bias = readout_potential - other_potential
-
         weighting_field = -ufl.grad(problem.potential) / bias
-        integrand = ufl.dot(charge_flux(problem), weighting_field)
-        weight = integration_weight(problem)
+
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         dx = problem.dx(problem.gas_volume.id)
+        integrand = ufl.dot(_charge_flux(problem), weighting_field)
         return E_CHARGE * assemble_scalar(weight * integrand * dx)
 
 
-class ElectrodeCurrent(ChamberQuantity):
+class ElectrodeCurrent(ChamberSurfaceQuantity):
     """The charge flowing out of the gas through an electrode per unit time (A).
 
     Computed from the carrier fluxes at the electrode. It is less accurate than
     :class:`ChamberCurrent` on a given mesh, and comparing the two is a check of the
-    discretisation.
+    discretisation. For the flux of a single carrier, use
+    ``festim.SurfaceFlux(field=carrier, surface=surface)``.
 
     It is negative on the electrode that collects the negative carriers.
 
@@ -184,87 +183,130 @@ class ElectrodeCurrent(ChamberQuantity):
         filename: the name of a csv or txt file to write the values to, optional
     """
 
-    def __init__(
-        self, surface: F.SurfaceSubdomain, filename: str | None = None
-    ) -> None:
-        super().__init__(filename=filename)
-        self.surface = surface
-
     @property
     def title(self) -> str:
         return f"Current through surface {self.surface.id} (A)"
 
     def evaluate(self, problem: ChargeTransportProblem) -> float:
-        normal = ufl.FacetNormal(problem.mesh.mesh)
-        weight = integration_weight(problem)
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
         ds = problem.ds(self.surface.id)
-        outward_flux = ufl.dot(charge_flux(problem), normal)
+        normal = ufl.FacetNormal(problem.mesh.mesh)
+        outward_flux = ufl.dot(_charge_flux(problem), normal)
         return E_CHARGE * assemble_scalar(weight * outward_flux * ds)
 
 
-class IdealCurrent(ChamberQuantity):
+class PairGeneration(ChamberVolumeQuantity):
+    """The production rate of ion pairs in a volume (1/s).
+
+    Args:
+        volume: the volume subdomain of the gas
+        filename: the name of a csv or txt file to write the values to, optional
+    """
+
+    @property
+    def title(self) -> str:
+        return f"Pair generation volume {self.volume.id} (1/s)"
+
+    def evaluate(self, problem: ChargeTransportProblem) -> float:
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
+        dx = problem.dx(self.volume.id)
+        return assemble_scalar(weight * problem.pair_production * dx)
+
+
+class Recombination(ChamberVolumeQuantity):
+    """The loss rate of ion pairs to recombination in a volume (1/s).
+
+    Args:
+        volume: the volume subdomain of the gas
+        filename: the name of a csv or txt file to write the values to, optional
+    """
+
+    @property
+    def title(self) -> str:
+        return f"Recombination volume {self.volume.id} (1/s)"
+
+    def evaluate(self, problem: ChargeTransportProblem) -> float:
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
+        dx = problem.dx(self.volume.id)
+        total = 0.0
+        for i, reaction in enumerate(problem.gas.reactions):
+            if not reaction.is_recombination:
+                continue
+            # mass action: the rate coefficient times the density of every reactant
+            local_rate = problem.rates[i]
+            for carrier in reaction.reactant:
+                local_rate = local_rate * carrier.post_processing_solution
+            total += assemble_scalar(weight * local_rate * dx)
+        return total
+
+
+class IdealCurrent(ChamberVolumeQuantity):
     """The current if every beta stopped in the gas and every charge were collected
-    (A)."""
+    (A).
+
+    Args:
+        volume: the volume subdomain of the gas
+        filename: the name of a csv or txt file to write the values to, optional
+    """
 
     @property
     def title(self) -> str:
-        return "Ideal current (A)"
+        return f"Ideal current volume {self.volume.id} (A)"
 
     def evaluate(self, problem: ChargeTransportProblem) -> float:
-        return E_CHARGE * ideal_pair_rate(problem)
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
+        dx = problem.dx(self.volume.id)
+        size_of_volume = assemble_scalar(weight * dx)
+
+        ideal_pair_rate = 0.0
+        for source in problem.ionisation_sources:
+            ideal_pair_rate += source.ideal_pair_rate(problem.gas, size_of_volume)
+        return E_CHARGE * ideal_pair_rate
 
 
-class PairGeneration(ChamberQuantity):
-    """The production rate of ion pairs in the gas (1/s)."""
+class WallEfficiency(ChamberVolumeQuantity):
+    """The share of the beta energy deposited in the gas rather than in the walls.
+
+    The current carried by the pairs that are generated, divided by the ideal current.
+
+    Args:
+        volume: the volume subdomain of the gas
+        filename: the name of a csv or txt file to write the values to, optional
+    """
 
     @property
     def title(self) -> str:
-        return "Pair generation (1/s)"
+        return f"Wall efficiency volume {self.volume.id}"
 
     def evaluate(self, problem: ChargeTransportProblem) -> float:
-        return generation_rate(problem)
-
-
-class Recombination(ChamberQuantity):
-    """The loss rate of ion pairs to recombination in the gas (1/s)."""
-
-    @property
-    def title(self) -> str:
-        return "Recombination (1/s)"
-
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
-        return recombination_rate(problem)
-
-
-class WallEfficiency(ChamberQuantity):
-    """The share of the beta energy deposited in the gas rather than in the walls."""
-
-    @property
-    def title(self) -> str:
-        return "Wall efficiency"
-
-    def evaluate(self, problem: ChargeTransportProblem) -> float:
-        ideal = ideal_pair_rate(problem)
-        if ideal == 0:
+        generation = PairGeneration(volume=self.volume).evaluate(problem)
+        ideal_current = IdealCurrent(volume=self.volume).evaluate(problem)
+        if ideal_current == 0:
             return float("nan")
-        return generation_rate(problem) / ideal
+        return E_CHARGE * generation / ideal_current
 
 
-class CollectionEfficiency(ChamberQuantity):
-    """The share of the ion pairs that escape recombination."""
+class CollectionEfficiency(ChamberVolumeQuantity):
+    """The share of the ion pairs that escape recombination.
+
+    Args:
+        volume: the volume subdomain of the gas
+        filename: the name of a csv or txt file to write the values to, optional
+    """
 
     @property
     def title(self) -> str:
-        return "Collection efficiency"
+        return f"Collection efficiency volume {self.volume.id}"
 
     def evaluate(self, problem: ChargeTransportProblem) -> float:
-        generation = generation_rate(problem)
+        generation = PairGeneration(volume=self.volume).evaluate(problem)
+        recombination = Recombination(volume=self.volume).evaluate(problem)
         if generation == 0:
             return float("nan")
-        return (generation - recombination_rate(problem)) / generation
+        return (generation - recombination) / generation
 
 
-class SpaceChargeField(ChamberQuantity):
+class SpaceChargeField(ChamberVolumeQuantity):
     r"""The field the charge in the gas would create, relative to the applied field.
 
     The transport problem uses a fixed potential and ignores the charge in the gas.
@@ -277,18 +319,22 @@ class SpaceChargeField(ChamberQuantity):
         \frac{\lVert \nabla \varphi_1 \rVert}{\lVert \nabla \varphi \rVert}
 
     with :math:`\varphi_1` the potential of the space charge and :math:`\varphi` the
-    applied potential, in the L2 norm. Treat results as indicative once it exceeds
-    about 0.1.
+    applied potential, in the L2 norm over the volume. Treat results as indicative
+    once it exceeds about 0.1.
+
+    Args:
+        volume: the volume subdomain of the gas
+        filename: the name of a csv or txt file to write the values to, optional
     """
 
-    def __init__(self, filename: str | None = None) -> None:
-        super().__init__(filename=filename)
+    def __init__(self, volume: F.VolumeSubdomain, filename: str | None = None) -> None:
+        super().__init__(volume=volume, filename=filename)
         self._space_charge_problem = None
         self._charge_density = None
 
     @property
     def title(self) -> str:
-        return "Space-charge field / applied field"
+        return f"Space-charge field / applied field volume {self.volume.id}"
 
     def _create_space_charge_problem(self, problem: ChargeTransportProblem) -> None:
         """The electrostatic problem of the space charge alone: the same electrodes,
@@ -320,8 +366,11 @@ class SpaceChargeField(ChamberQuantity):
             self._create_space_charge_problem(problem)
 
         # update the charge density with the latest solution, then solve
+        net_charge_density = 0
+        for carrier in problem.gas.carriers:
+            net_charge_density += carrier.charge * carrier.post_processing_solution
         expression = fem.Expression(
-            E_CHARGE * net_charge_density(problem),
+            E_CHARGE * net_charge_density,
             self._charge_density.function_space.element.interpolation_points,
         )
         self._charge_density.interpolate(expression)
@@ -329,8 +378,8 @@ class SpaceChargeField(ChamberQuantity):
 
         induced_field = ufl.grad(self._space_charge_problem.u)
         applied_field = ufl.grad(problem.potential)
-        weight = integration_weight(problem)
-        dx = problem.dx(problem.gas_volume.id)
+        weight = problem.mesh.coordinate_system.integration_weight(problem.mesh.mesh)
+        dx = problem.dx(self.volume.id)
         induced_norm_squared = assemble_scalar(
             weight * ufl.dot(induced_field, induced_field) * dx
         )

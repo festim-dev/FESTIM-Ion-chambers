@@ -42,12 +42,12 @@ def reference_results() -> dict[str, ic.ChamberQuantity]:
         "current": ic.ChamberCurrent(surface=chamber.anode),
         "anode_current": ic.ElectrodeCurrent(surface=chamber.anode),
         "cathode_current": ic.ElectrodeCurrent(surface=chamber.cathode),
-        "ideal_current": ic.IdealCurrent(),
-        "generation": ic.PairGeneration(),
-        "recombination": ic.Recombination(),
-        "wall_efficiency": ic.WallEfficiency(),
-        "collection_efficiency": ic.CollectionEfficiency(),
-        "space_charge_field": ic.SpaceChargeField(),
+        "ideal_current": ic.IdealCurrent(volume=chamber.gas),
+        "generation": ic.PairGeneration(volume=chamber.gas),
+        "recombination": ic.Recombination(volume=chamber.gas),
+        "wall_efficiency": ic.WallEfficiency(volume=chamber.gas),
+        "collection_efficiency": ic.CollectionEfficiency(volume=chamber.gas),
+        "space_charge_field": ic.SpaceChargeField(volume=chamber.gas),
     }
     tritium = ic.TritiumInGas(activity=0.0, geometry=chamber)
     transport = ic.ChargeTransportProblem(

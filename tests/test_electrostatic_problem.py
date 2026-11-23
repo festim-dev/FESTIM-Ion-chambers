@@ -153,7 +153,7 @@ def test_rejects_exports_of_another_type(long_chamber):
             ic.FixedPotentialBC(subdomain=long_chamber.anode, value=100.0),
             ic.FixedPotentialBC(subdomain=long_chamber.cathode, value=0.0),
         ],
-        exports=[ic.IdealCurrent()],
+        exports=[ic.IdealCurrent(volume=long_chamber.gas)],
     )
     with pytest.raises(TypeError, match="exports must be a list of"):
         electrostatics.initialise()

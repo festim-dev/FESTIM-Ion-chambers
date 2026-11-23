@@ -15,6 +15,8 @@ from ion_chambers.electrostatic_problem import (
 from ion_chambers.exports import (
     ChamberCurrent,
     ChamberQuantity,
+    ChamberSurfaceQuantity,
+    ChamberVolumeQuantity,
     CollectionEfficiency,
     ElectrodeCurrent,
     IdealCurrent,
@@ -32,6 +34,8 @@ __all__ = [
     "CellwiseDiffusionMaterial",
     "ChamberCurrent",
     "ChamberQuantity",
+    "ChamberSurfaceQuantity",
+    "ChamberVolumeQuantity",
     "ChargeCarrier",
     "ChargeTransportProblem",
     "CoaxialChamber",

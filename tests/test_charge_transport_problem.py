@@ -39,13 +39,14 @@ def electron_ion_gas(mobility=0.04) -> ic.Gas:
     )
 
 
-def run_coarse_problem(quantity, gas=None, bias=500.0, activity=3.7e4) -> float:
+def run_coarse_problem(quantity_class, gas=None, bias=500.0, activity=3.7e4) -> float:
     """Solves the reference chamber on a coarse mesh without wall losses and returns
-    the value of one quantity."""
+    the value of one quantity, computed on the anode or in the gas."""
     chamber = reference_chamber()
-    if isinstance(quantity, str):
-        # the quantity needs the anode of this chamber
-        quantity = getattr(ic, quantity)(surface=chamber.anode)
+    if issubclass(quantity_class, ic.ChamberSurfaceQuantity):
+        quantity = quantity_class(surface=chamber.anode)
+    else:
+        quantity = quantity_class(volume=chamber.gas)
     transport = ic.ChargeTransportProblem(
         electrostatic_problem=solve_potential(
             chamber, radial_cells=30, axial_cells=18, bias=bias
@@ -69,7 +70,10 @@ def test_is_a_festim_hydrogen_transport_problem():
 
 def test_chamber_quantities_are_festim_derived_quantities():
     """A chamber quantity is a FESTIM derived quantity."""
-    assert isinstance(ic.CollectionEfficiency(), F.exports.DerivedQuantity)
+    assert isinstance(
+        ic.CollectionEfficiency(volume=reference_chamber().gas),
+        F.exports.DerivedQuantity,
+    )
 
 
 def test_initialise_needs_a_solved_electrostatic_problem(chamber):
@@ -238,20 +242,20 @@ def test_data_holds_one_value_per_run(reference_results):
 
 def test_without_wall_losses_every_pair_is_generated():
     """A source without a geometry gives a wall efficiency of one."""
-    assert np.isclose(run_coarse_problem(ic.WallEfficiency()), 1.0)
+    assert np.isclose(run_coarse_problem(ic.WallEfficiency), 1.0)
 
 
 def test_reversing_the_bias_reverses_the_current():
     """A negative bias gives the same current with the opposite sign."""
-    forward = run_coarse_problem("ChamberCurrent", bias=500.0)
-    reverse = run_coarse_problem("ChamberCurrent", bias=-500.0)
+    forward = run_coarse_problem(ic.ChamberCurrent, bias=500.0)
+    reverse = run_coarse_problem(ic.ChamberCurrent, bias=-500.0)
     assert np.isclose(reverse, -forward, rtol=1e-6)
 
 
 def test_higher_bias_collects_more():
     """Raising the bias from 100 V to 1000 V raises the collection efficiency."""
-    low = run_coarse_problem(ic.CollectionEfficiency(), bias=100.0, activity=3.7e12)
-    high = run_coarse_problem(ic.CollectionEfficiency(), bias=1000.0, activity=3.7e12)
+    low = run_coarse_problem(ic.CollectionEfficiency, bias=100.0, activity=3.7e12)
+    high = run_coarse_problem(ic.CollectionEfficiency, bias=1000.0, activity=3.7e12)
     assert high > low
 
 
@@ -261,7 +265,7 @@ def test_thinner_gas_loses_more_to_the_walls(chamber):
     for density in (1.205, 0.241):
         gas = air()
         gas.density = density
-        wall_efficiency = ic.WallEfficiency()
+        wall_efficiency = ic.WallEfficiency(volume=chamber.gas)
         transport = ic.ChargeTransportProblem(
             electrostatic_problem=solve_potential(
                 chamber, radial_cells=30, axial_cells=18
@@ -290,7 +294,9 @@ def test_chamber_current_needs_an_electrode_of_the_problem(coarse_transport):
 def test_quantity_writes_a_csv_file(coarse_transport, tmp_path):
     """A quantity given a filename writes its value to that file."""
     filename = tmp_path / "collection.csv"
-    coarse_transport.exports = [ic.CollectionEfficiency(filename=str(filename))]
+    coarse_transport.exports = [
+        ic.CollectionEfficiency(volume=reference_chamber().gas, filename=str(filename))
+    ]
     coarse_transport.initialise()
     coarse_transport.run()
     assert filename.exists()
@@ -315,7 +321,7 @@ def test_gas_without_negative_ions_collects_nearly_everything():
     the ideal current."""
     chamber = reference_chamber()
     current = ic.ChamberCurrent(surface=chamber.anode)
-    ideal = ic.IdealCurrent()
+    ideal = ic.IdealCurrent(volume=chamber.gas)
     transport = ic.ChargeTransportProblem(
         electrostatic_problem=solve_potential(chamber, radial_cells=30, axial_cells=18),
         gas=electron_ion_gas(),
@@ -331,7 +337,7 @@ def test_gas_without_reactions_has_no_recombination():
     """A gas with no reactions reports zero recombination."""
     gas = electron_ion_gas()
     gas.reactions = []
-    assert run_coarse_problem(ic.Recombination(), gas=gas) == 0.0
+    assert run_coarse_problem(ic.Recombination, gas=gas) == 0.0
 
 
 def test_callable_mobility_matches_the_equivalent_constant():
@@ -341,9 +347,9 @@ def test_callable_mobility_matches_the_equivalent_constant():
     def constant_mobility(reduced_field):
         return np.full_like(reduced_field, 0.04)
 
-    with_float = run_coarse_problem("ChamberCurrent", gas=electron_ion_gas(0.04))
+    with_float = run_coarse_problem(ic.ChamberCurrent, gas=electron_ion_gas(0.04))
     with_callable = run_coarse_problem(
-        "ChamberCurrent", gas=electron_ion_gas(constant_mobility)
+        ic.ChamberCurrent, gas=electron_ion_gas(constant_mobility)
     )
     assert np.isclose(with_float, with_callable, rtol=1e-9)
 
@@ -351,8 +357,9 @@ def test_callable_mobility_matches_the_equivalent_constant():
 def test_two_sources_add_up(coarse_electrostatics):
     """Two sources generate as many ion pairs as one source with their summed
     activity."""
-    generation = ic.PairGeneration()
-    ideal = ic.IdealCurrent()
+    gas_volume = reference_chamber().gas
+    generation = ic.PairGeneration(volume=gas_volume)
+    ideal = ic.IdealCurrent(volume=gas_volume)
     transport = ic.ChargeTransportProblem(
         electrostatic_problem=coarse_electrostatics,
         gas=air(),
@@ -432,7 +439,7 @@ def run_on_mesh_from_file(filename) -> float:
         electrostatic_problem=electrostatics,
         gas=air(),
         ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
-        exports=[current, ic.SpaceChargeField()],
+        exports=[current, ic.SpaceChargeField(volume=gas_volume)],
     )
     transport.initialise()
     transport.run()
@@ -444,7 +451,7 @@ def test_mesh_read_from_a_file_gives_the_same_current(tmp_path):
     the same current as the same mesh created by the chamber."""
     filename = tmp_path / "chamber.bp"
     write_tagged_mesh(reference_chamber(), filename)
-    expected = run_coarse_problem("ChamberCurrent")
+    expected = run_coarse_problem(ic.ChamberCurrent)
     assert np.isclose(run_on_mesh_from_file(filename), expected, rtol=1e-8)
 
 
@@ -495,3 +502,48 @@ def test_rejects_a_mesh_that_is_not_made_of_triangles():
     )
     with pytest.raises(ValueError, match="must be made of triangles"):
         transport.initialise()
+
+
+# ---- surface and volume quantities --------------------------------------------------
+
+
+def test_surface_quantity_rejects_a_volume(chamber):
+    """A surface quantity given a volume subdomain raises a TypeError."""
+    with pytest.raises(TypeError, match="surface must be a festim"):
+        ic.ChamberCurrent(surface=chamber.gas)
+
+
+def test_volume_quantity_rejects_a_surface(chamber):
+    """A volume quantity given a surface subdomain raises a TypeError."""
+    with pytest.raises(TypeError, match="volume must be a festim"):
+        ic.PairGeneration(volume=chamber.anode)
+
+
+def test_volume_quantity_title_names_its_volume(chamber):
+    """The title of a volume quantity, used as csv header, holds the id of its
+    volume."""
+    assert (
+        ic.PairGeneration(volume=chamber.gas).title == "Pair generation volume 1 (1/s)"
+    )
+
+
+def test_festim_surface_fluxes_add_up_to_the_electrode_current(chamber):
+    """FESTIM's SurfaceFlux of every carrier, weighted by its charge, adds up to the
+    ElectrodeCurrent of the same surface."""
+    gas = air()
+    electrode_current = ic.ElectrodeCurrent(surface=chamber.anode)
+    carrier_fluxes = []
+    for carrier in gas.carriers:
+        carrier_fluxes.append(F.SurfaceFlux(field=carrier, surface=chamber.anode))
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=solve_potential(chamber, radial_cells=30, axial_cells=18),
+        gas=gas,
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e10)],
+        exports=[electrode_current, *carrier_fluxes],
+    )
+    transport.initialise()
+    transport.run()
+    total = 0.0
+    for carrier, flux in zip(gas.carriers, carrier_fluxes, strict=True):
+        total += ic.constants.E_CHARGE * carrier.charge * flux.value
+    assert np.isclose(total, electrode_current.value, rtol=1e-6)

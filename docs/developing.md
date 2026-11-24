@@ -26,7 +26,7 @@ boundary conditions and exports, then initialised and run.
 ## Tests
 
 ```bash
-python -m pytest                      # everything, about a minute
+python -m pytest                      # everything
 python -m pytest -m "not slow"        # unit tests only
 python -m pytest tests/test_gas.py -k pressure
 ```

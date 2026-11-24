@@ -44,7 +44,7 @@ against measurements**. See the [roadmap](roadmap.md).
 installation
 quickstart
 walkthrough
-example_air
+reference_case
 ```
 
 ```{toctree}
@@ -65,7 +65,6 @@ guide/studies
 :maxdepth: 1
 
 theory
-results
 roadmap
 ```
 

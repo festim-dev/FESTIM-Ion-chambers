@@ -4,25 +4,38 @@ These results are for a generic chamber in air and have not been validated again
 measurements. They show what the model produces and that it behaves sensibly. They are
 not predictions for a real monitor.
 
-The full write-up with figures is the
-<a href="prototype_report.html">prototype report</a> (October 2026).
-
-:::{note}
-The report was produced with the first version of the code, on FESTIM 2.2-rc.2. The
-restructured package reproduces its currents on the same mesh, and the test suite
-checks this.
-:::
-
-The numbers on this page were recomputed with the current package, on its uniform
-mesh, with the [examples](guide/studies.md#ready-made-examples): each table names the
-two scripts that produce it. They differ slightly from the report, which used a graded
-mesh.
+The numbers on this page come from the [examples](guide/studies.md#ready-made-examples):
+each section names the two scripts that produce it.
 
 ## Reference case
 
 A 1 L coaxial chamber in room air: rod radius 1.5 mm, can radius 5.0 cm, length
 12.7 cm (length/diameter 1.27), 3 mm insulating rings, anode at +500 V.
 Both are defined in [Example: air and the reference chamber](example_air.md).
+
+## Fields
+
+```{figure} images/prototype_fields.png
+:alt: Five maps in the half section of the chamber. The electric field, the density of free electrons, of positive ions and of negative ions, and the recombination rate.
+
+The reference chamber at 100 Ci/m³, in the half section (r, z). The axis is on the
+left and the anode rod is at r = 0.15 cm. The lines are electric field lines. Black
+lines mark the can and the end caps, gold segments the insulating rings.
+```
+
+The field is strongest at the rod and weakest in the corners between the can and the
+end caps. Electrons attach to oxygen within about 10 ns, a few micrometres from where
+they are freed, so their density mirrors the source and is nearly uniform. Positive
+ions pile up towards the can and negative ions towards the rod. The two overlap most
+in the middle of the gap, and that is where they recombine.
+
+:::{note}
+The two figures on this page were made with the first version of the code, the
+prototype that showed this model could be built on FESTIM. The package reproduces the
+currents of that prototype on the same mesh, and the test suite checks this. At
+100 Ci/m³ the space charge of the ions would distort the field, which the model does
+not apply, so the maps show the pattern rather than exact values.
+:::
 
 ## Response to tritium concentration
 
@@ -35,19 +48,28 @@ From `response_curve.py` and `calibration.py`.
 | Response 5% below linear at | 7.9 Ci/m³ |
 | Space-charge field reaches 10% of the applied field at | 41 Ci/m³ |
 
-The current is linear in the activity over eight decades, about 1% below the ideal value
-because of wall losses. Ion–ion recombination then bends the curve. Beyond 41 Ci/m³
-the fixed-field assumption no longer holds and the results are indicative only.
+The current is linear in the activity over eight decades, about 1% below the ideal
+value because of wall losses. Ion–ion recombination then bends the curve. Beyond
+41 Ci/m³ the fixed-field assumption no longer holds and the results are indicative
+only.
 
 ## Chamber shape
 
-From `aspect_ratio_sweep.py` and `shape_comparison.py`. At a fixed gas volume of 1 L and a 500 V bias, the length-to-diameter ratio L/D sets a
-trade-off:
+From `aspect_ratio_sweep.py` and `shape_comparison.py`. At a fixed gas volume of 1 L
+and a 500 V bias, the length-to-diameter ratio L/D sets a trade-off:
 
 - Flat chambers have a long drift gap and corners that the field barely reaches. Ions
   linger there and recombine.
 - Long, thin chambers collect quickly, which delays recombination, at the cost of
   slightly more beta energy lost to the can.
+
+```{figure} images/prototype_shapes.png
+:alt: Maps of the positive-ion density in three chambers of the same volume, one flat, one of the reference shape and one long and thin.
+
+Positive-ion density at 100 Ci/m³ in three 1 L chambers drawn to one scale, with the
+axis along the bottom of each. The lines are field lines from the rod. In the flat
+chamber they bow out to the end caps and leave the outer corners nearly field-free.
+```
 
 | L/D | Response 5% below linear at |
 |---|---|
@@ -77,33 +99,20 @@ chamber is far from saturation at these biases, the fit is 2.9% low.
 
 ## Checks
 
-Charge conservation
-: The Ramo current and the integrated anode flux agree to 0.02% on the fine
-  mesh of the studies (300 radial cells). At trace
-  levels the extrapolated current matches the balance of generation minus
-  recombination to 0.09%.
-
-Recombination
-: Boag's formula for a cylindrical chamber under continuous irradiation gives a
-  collection efficiency of 0.779 at 100 Ci/m³ for the reference geometry. The model
-  gives 0.705. The model's extra loss comes from the low-field corners near the end
-  caps and the non-uniform source, which the one-dimensional formula ignores.
+These are tests of the package (`tests/test_verification.py`), not comparisons with
+measurements.
 
 Parallel plates
 : For a parallel-plate chamber with a uniform source and two kinds of ions, the share
   of the pairs lost to recombination agrees with Boag's formula to 1%, and the current
   extrapolated from two meshes agrees to 0.01%. A transient run ends at the
-  steady-state current. These are tests (`tests/test_verification.py`).
+  steady-state current.
 
 Manufactured solution
 : With densities chosen in advance and the sources worked out from them, the solved
   densities converge to the chosen ones at second order when the diffusion floor is
   inactive, and at first order when it sets the diffusion, on a cartesian and on a
-  cylindrical mesh. Also tests.
-
-Space charge
-: The perturbation potential was verified against the analytic solution for a
-  uniformly charged coaxial gap to 10⁻⁷.
+  cylindrical mesh.
 
 Mesh convergence
 : The error is first order in the cell size. Each quoted current is extrapolated from

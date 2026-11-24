@@ -18,9 +18,8 @@ subdomains, boundary conditions and exports.
 
 :::{admonition} Status: prototype
 :class: warning
-The model runs for a generic coaxial chamber in air. It has **not yet been compared
-with measurements**: the real vessel geometry and the carrier gases of the experiments
-(N₂, Ar) are not in the model yet. See the [roadmap](roadmap.md).
+The model runs for a generic coaxial chamber in air. It has **not been validated
+against measurements**. See the [roadmap](roadmap.md).
 :::
 
 ## What it can do today

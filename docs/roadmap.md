@@ -1,8 +1,7 @@
 # Roadmap
 
-The aim is to reproduce the existing measurements first, then use the validated model
-to explore chamber design: the linear range, memory effects and the detection
-threshold.
+The aim is a model for exploring chamber design: the linear range, memory effects and
+the detection threshold. It has not been validated against measurements.
 
 ## Done
 
@@ -23,9 +22,7 @@ threshold.
 2. **Wall losses from a mesh.** A mesh and its tags can already be read from a file
    and used in both problems. What is missing is a wall-loss Monte Carlo that traces
    rays against the mesh boundary instead of analytic cylinders.
-3. **The real 1 L monitor.** Its geometry, then the first comparison with the N₂
-   calibration data.
-4. **Space-charge coupling.** A class that iterates between the transport problem and
+3. **Space-charge coupling.** A class that iterates between the transport problem and
    the electrostatic problem, as FESTIM couples heat transfer and hydrogen transport,
    to extend the model beyond a few tens of Ci/m³.
 
@@ -54,7 +51,7 @@ threshold.
   solve the chamber as a steady state whenever a reading is wanted, with the wall
   inventory entering as an extra ionisation source. This gives the memory effect and
   the background drift after an exposure.
-- **20 cc wire cage**, which needs a 3D mesh.
+- **Chambers that need a 3D mesh**, such as a wire cage.
 - **Gas flow** through inlet and outlet ports, and the response to a step in
   concentration.
 - **Columnar recombination** along beta tracks, and scattering in the wall-loss Monte
@@ -62,14 +59,13 @@ threshold.
 
 ## Improvements to the code
 
-These are what limits the cases the package can describe. Where the code cannot do
-something it raises an error, with the one exception noted in the first item.
+None of these gives a wrong result today: where the code cannot do something, it
+raises an error. They are what limits the cases the package can describe.
 
 - **Chamber current with any number of electrodes.**
   {class}`~ion_chambers.ChamberCurrent` takes its weighting potential from the
-  potential divided by the bias, which holds for two electrodes without space charge.
-  It raises with another number of electrodes, but it does not check whether the
-  electrostatic problem has a charge density. A small Laplace solve, with 1 on the readout electrode and 0
+  potential divided by the bias, which holds for two electrodes without space charge,
+  and raises otherwise. A small Laplace solve, with 1 on the readout electrode and 0
   on the others, removes the restriction. It is needed for guard rings and for
   space-charge coupling.
 - **Coefficients that depend on more than E/N.** A mobility or a rate is a constant or

@@ -38,6 +38,13 @@ against measurements**. See the [roadmap](roadmap.md).
   (current against bias) and shape studies, with mesh extrapolation.
 
 ```{toctree}
+:caption: Background
+:maxdepth: 1
+
+theory
+```
+
+```{toctree}
 :caption: Getting started
 :maxdepth: 1
 
@@ -61,17 +68,16 @@ guide/studies
 ```
 
 ```{toctree}
-:caption: Background
-:maxdepth: 1
-
-theory
-roadmap
-```
-
-```{toctree}
 :caption: Reference
 :maxdepth: 1
 
 api
 developing
+```
+
+```{toctree}
+:caption: Project
+:maxdepth: 1
+
+roadmap
 ```

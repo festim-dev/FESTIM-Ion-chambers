@@ -70,6 +70,35 @@ subdomain of the electrostatic problem.
 transport problem and raise an error if they are: they come from the electrostatic
 problem and the gas.
 
+## Electrode conditions
+
+By default each electrode gets, for each carrier, one of two conditions, chosen by
+comparing the potential of the electrode with the mean of the electrode potentials:
+outflow for the carriers it attracts, zero density for those it repels.
+
+{class}`~ion_chambers.AbsorbingElectrodeBC` is an alternative that needs no such rule.
+It looks at the force on the carrier at each point of the electrode: where the field
+drives the carrier into the surface it leaves at its drift velocity, and where the
+field drives it away nothing crosses. The same condition is given to every carrier
+on every electrode:
+
+```python
+for electrode in [chamber.anode, chamber.cathode]:
+    for carrier in gas.carriers:
+        transport.boundary_conditions.append(
+            ic.AbsorbingElectrodeBC(subdomain=electrode, species=carrier)
+        )
+```
+
+The two differ on a single mesh. With the default, the zero density on the repelling
+electrode combines with the [stabilisation](#stabilisation) into a sink, and the
+current comes out too low by an amount that falls with the cell size (9.5% at 30
+radial cells for the reference chamber at trace level). With absorbing electrodes
+the same mesh gives the ideal current to 0.003%. Both converge to the same current.
+The absorbing condition neglects the carriers that diffuse against the field to a
+repelling electrode, a share of about the thermal voltage over the bias. It is not
+the default yet: the pinned results of this package were computed with the first.
+
 ## Stabilisation
 
 Ions in a chamber are carried by the field far more than they diffuse. Standard finite

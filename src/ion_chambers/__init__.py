@@ -2,6 +2,7 @@
 
 from ion_chambers import beta, constants
 from ion_chambers.charge_transport_problem import (
+    AbsorbingElectrodeBC,
     CellwiseDiffusionMaterial,
     ChargeTransportProblem,
     DiffusionFloor,
@@ -30,6 +31,7 @@ from ion_chambers.geometry import CoaxialChamber, Geometry
 from ion_chambers.source import IonisationSource, TritiumInGas
 
 __all__ = [
+    "AbsorbingElectrodeBC",
     "CarrierReaction",
     "CellwiseDiffusionMaterial",
     "ChamberCurrent",

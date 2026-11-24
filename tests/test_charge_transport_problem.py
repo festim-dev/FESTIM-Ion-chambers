@@ -641,3 +641,51 @@ def test_rejects_an_input_taken_from_elsewhere(coarse_transport, attribute, valu
     setattr(coarse_transport, attribute, value)
     with pytest.raises(ValueError, match=f"{attribute} must not be set"):
         coarse_transport.initialise()
+
+
+# ---- absorbing electrodes: the condition follows the force on the carrier -----------
+
+
+def run_with_absorbing_electrodes(bias: float) -> float:
+    """Solves the coarse reference problem at 1 uCi/m3 without wall losses, with an
+    AbsorbingElectrodeBC for every carrier on both electrodes, and returns the
+    current over the ideal current."""
+    chamber = reference_chamber()
+    gas = air()
+    current = ic.ChamberCurrent(surface=chamber.anode)
+    ideal_current = ic.IdealCurrent(volume=chamber.gas)
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=solve_potential(
+            chamber, radial_cells=30, axial_cells=18, bias=bias
+        ),
+        gas=gas,
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+        exports=[current, ideal_current],
+    )
+    for electrode in [chamber.anode, chamber.cathode]:
+        for carrier in gas.carriers:
+            transport.boundary_conditions.append(
+                ic.AbsorbingElectrodeBC(subdomain=electrode, species=carrier)
+            )
+    transport.initialise()
+    transport.run()
+    return current.value / ideal_current.value
+
+
+def test_absorbing_electrode_is_a_festim_outflow_condition(chamber):
+    """AbsorbingElectrodeBC inherits from festim.OutflowBC."""
+    carrier = ic.ChargeCarrier(name="P", charge=1, mobility=2.0e-4)
+    bc = ic.AbsorbingElectrodeBC(subdomain=chamber.anode, species=carrier)
+    assert isinstance(bc, F.OutflowBC)
+
+
+def test_absorbing_electrodes_collect_every_pair_on_a_coarse_mesh():
+    """With absorbing electrodes and nothing recombining, the current on a coarse
+    mesh is the charge of all the pairs created."""
+    assert np.isclose(run_with_absorbing_electrodes(bias=500.0), 1.0, rtol=1e-4)
+
+
+def test_absorbing_electrodes_need_no_change_when_the_bias_is_reversed():
+    """The same absorbing conditions with the bias reversed give the opposite
+    current: which carriers an electrode takes follows from the field."""
+    assert np.isclose(run_with_absorbing_electrodes(bias=-500.0), -1.0, rtol=1e-4)

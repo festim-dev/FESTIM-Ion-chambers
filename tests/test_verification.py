@@ -197,6 +197,7 @@ def manufactured_error(
     coordinate_system: str,
     positive_diffusivity: float,
     negative_diffusivity: float,
+    electrode_conditions: str = "fixed density",
 ) -> float:
     """Solves for the chosen densities and returns the larger of the two relative L2
     errors.
@@ -206,6 +207,9 @@ def manufactured_error(
         coordinate_system: "cartesian" or "cylindrical"
         positive_diffusivity: the diffusion coefficient of the positive ions (m2/s)
         negative_diffusivity: the diffusion coefficient of the negative ions (m2/s)
+        electrode_conditions: "fixed density" sets the chosen densities on the
+            electrodes. "absorbing" puts an AbsorbingElectrodeBC there instead, with
+            a flux that makes up the difference to the chosen densities.
     """
     is_cylindrical = coordinate_system == "cylindrical"
 
@@ -270,18 +274,27 @@ def manufactured_error(
         density_product = chosen_positive_density(x) * chosen_negative_density(x)
         return RECOMBINATION_RATE * density_product
 
+    # the drift velocity and the flux of each carrier, both along x
+    def positive_velocity(x):
+        return POSITIVE_MOBILITY * field(x)
+
+    def negative_velocity(x):
+        return -NEGATIVE_MOBILITY * field(x)
+
+    def positive_flux(x):
+        density = chosen_positive_density(x)
+        return -positive_diffusivity * density.dx(0) + density * positive_velocity(x)
+
+    def negative_flux(x):
+        density = chosen_negative_density(x)
+        return -negative_diffusivity * density.dx(0) + density * negative_velocity(x)
+
     # the source of each carrier: the divergence of its flux, plus what recombines
     def positive_source(x):
-        density = chosen_positive_density(x)
-        drift = density * POSITIVE_MOBILITY * field(x)
-        flux = -positive_diffusivity * density.dx(0) + drift
-        return divergence(flux, x) + recombined(x)
+        return divergence(positive_flux(x), x) + recombined(x)
 
     def negative_source(x):
-        density = chosen_negative_density(x)
-        drift = -density * NEGATIVE_MOBILITY * field(x)
-        flux = -negative_diffusivity * density.dx(0) + drift
-        return divergence(flux, x) + recombined(x)
+        return divergence(negative_flux(x), x) + recombined(x)
 
     # No ionisation source: the sources and the conditions on the electrodes are
     # given as FESTIM objects. The chosen densities vary along x only, so the two
@@ -295,21 +308,43 @@ def manufactured_error(
             value=negative_source, volume=gas_volume, species=negative_ions
         ),
     ]
-    for electrode in [inner, outer]:
-        transport.boundary_conditions.append(
-            F.FixedConcentrationBC(
-                subdomain=electrode,
-                value=chosen_positive_density,
-                species=positive_ions,
+
+    # for each carrier: its chosen density, its velocity and its flux
+    carriers = [
+        (positive_ions, chosen_positive_density, positive_velocity, positive_flux),
+        (negative_ions, chosen_negative_density, negative_velocity, negative_flux),
+    ]
+    # for each electrode: the x component of the normal pointing out of the gas
+    electrodes = [(inner, -1.0), (outer, 1.0)]
+
+    for electrode, normal in electrodes:
+        for carrier, chosen_density, velocity, flux in carriers:
+            if electrode_conditions == "fixed density":
+                fixed_density = F.FixedConcentrationBC(
+                    subdomain=electrode, value=chosen_density, species=carrier
+                )
+                transport.boundary_conditions.append(fixed_density)
+                continue
+
+            # An absorbing electrode lets c max(v.n, 0) out of the gas. The chosen
+            # densities have another flux there, so the difference is brought in.
+            def difference_to_absorbing(
+                x,
+                normal=normal,
+                chosen_density=chosen_density,
+                velocity=velocity,
+                flux=flux,
+            ):
+                absorbed = chosen_density(x) * ufl.max_value(velocity(x) * normal, 0.0)
+                return absorbed - flux(x) * normal
+
+            absorbing = ic.AbsorbingElectrodeBC(subdomain=electrode, species=carrier)
+            make_up = F.ParticleFluxBC(
+                subdomain=electrode, value=difference_to_absorbing, species=carrier
             )
-        )
-        transport.boundary_conditions.append(
-            F.FixedConcentrationBC(
-                subdomain=electrode,
-                value=chosen_negative_density,
-                species=negative_ions,
-            )
-        )
+            transport.boundary_conditions.append(absorbing)
+            transport.boundary_conditions.append(make_up)
+
     transport.initialise()
     transport.run()
 
@@ -416,3 +451,52 @@ def test_extrapolated_coaxial_current_is_the_ideal_current(coaxial_collected_sha
     fine = coaxial_collected_shares[2]
     extrapolated = 2 * fine - medium
     assert np.isclose(extrapolated, 1.0, rtol=2e-3)
+
+
+@pytest.mark.parametrize("coordinate_system", ["cartesian", "cylindrical"])
+def test_absorbing_electrodes_converge_at_second_order_without_the_floor(
+    coordinate_system,
+):
+    """With absorbing electrodes in place of fixed densities, and diffusion strong
+    enough that the floor does nothing, halving the cell size divides the error of
+    the densities by four. The meshes are finer than for fixed densities: on the
+    cylindrical mesh the order is 1.92 between 16 and 32 cells and rises to 2,
+    because the drift velocity on the electrode comes from the solved potential."""
+    coarse = manufactured_error(
+        cells=64,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=0.02,
+        negative_diffusivity=0.03,
+        electrode_conditions="absorbing",
+    )
+    fine = manufactured_error(
+        cells=128,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=0.02,
+        negative_diffusivity=0.03,
+        electrode_conditions="absorbing",
+    )
+    assert np.isclose(np.log2(coarse / fine), 2.0, atol=0.05)
+
+
+@pytest.mark.parametrize("coordinate_system", ["cartesian", "cylindrical"])
+def test_absorbing_electrodes_converge_at_first_order_with_the_floor(
+    coordinate_system,
+):
+    """With absorbing electrodes and the weak diffusion of real ions, halving the
+    cell size halves the error of the densities."""
+    coarse = manufactured_error(
+        cells=64,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=5.0e-6,
+        negative_diffusivity=5.5e-6,
+        electrode_conditions="absorbing",
+    )
+    fine = manufactured_error(
+        cells=128,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=5.0e-6,
+        negative_diffusivity=5.5e-6,
+        electrode_conditions="absorbing",
+    )
+    assert np.isclose(np.log2(coarse / fine), 1.0, atol=0.1)

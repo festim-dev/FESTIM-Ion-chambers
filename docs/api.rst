@@ -83,6 +83,9 @@ Stabilisation and FESTIM extensions
 
 .. autofunction:: ion_chambers.charge_transport_problem.cell_field_length
 
+.. autoclass:: ion_chambers.AbsorbingElectrodeBC
+   :members:
+
 .. autoclass:: ion_chambers.MobilityElectromigration
 
 .. autoclass:: ion_chambers.CellwiseDiffusionMaterial

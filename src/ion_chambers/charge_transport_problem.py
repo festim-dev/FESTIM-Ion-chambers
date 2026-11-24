@@ -49,6 +49,61 @@ class MobilityElectromigration(F.ElectromigrationTerm):
         return -self.charge * self.mobility * ufl.grad(self.potential.fenics_object)
 
 
+class AbsorbingElectrodeBC(F.OutflowBC):
+    r"""An electrode that absorbs the carriers the field drives into it and emits none.
+
+    What crosses the electrode is decided by the force on the carrier at each point of
+    the surface. With :math:`v` the drift velocity of the carrier and :math:`n` the
+    normal pointing out of the gas, the flux through the electrode is
+
+    .. math::
+
+        J \cdot n = c\, \max(v \cdot n,\ 0)
+
+    Where the field drives the carrier into the electrode, it leaves at its drift
+    velocity. Where the field drives it away, nothing crosses: the electrode emits no
+    carriers, and those created nearby are carried back into the gas.
+
+    The same condition serves every carrier on every electrode, whatever the sign of
+    the charge, the number of electrodes or the direction of the field along the
+    surface. It neglects the carriers that reach a repelling electrode by diffusing
+    against the field, a share of about the thermal voltage over the bias.
+
+    It is a :class:`festim.OutflowBC`, which gives :math:`J \cdot n = c\, v \cdot n`,
+    without the inflow that an outflow condition lets in where :math:`v \cdot n < 0`.
+
+    Args:
+        subdomain: the surface of the electrode
+        species: the charge carrier
+
+    Examples:
+        .. code-block:: python
+
+            transport.boundary_conditions = [
+                ic.AbsorbingElectrodeBC(subdomain=chamber.anode, species=electrons)
+            ]
+    """
+
+    def no_inflow_form(self, velocity, normal, ds: ufl.Measure):
+        """The term that removes the inflow of the outflow condition.
+
+        Args:
+            velocity: the drift velocity of the carrier, a ufl expression
+            normal: the normal of the surface, pointing out of the gas
+            ds: the surface measure of the problem
+
+        Returns:
+            the ufl form to add to the formulation of the problem
+        """
+        inward_drift = ufl.min_value(ufl.dot(velocity, normal), 0.0)
+        return (
+            -self.species.solution
+            * inward_drift
+            * self.species.test_function
+            * ds(self.subdomain.id)
+        )
+
+
 class CellwiseDiffusionMaterial(F.Material):
     """Material whose diffusion coefficient is a separate field for each species.
 
@@ -473,6 +528,22 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
                         subdomain=electrode, value=0.0, species=carrier
                     )
                 self.boundary_conditions.append(carrier_bc)
+
+    def create_formulation(self) -> None:
+        """Creates FESTIM's formulation, then adds what makes an
+        :class:`AbsorbingElectrodeBC` differ from an outflow condition."""
+        super().create_formulation()
+        normal = ufl.FacetNormal(self.mesh.mesh)
+        for bc in self.boundary_conditions:
+            if isinstance(bc, AbsorbingElectrodeBC):
+                velocity = self.drift_velocity_in(
+                    field=bc.species,
+                    volume=self.volume_subdomain_of_surface(bc.subdomain),
+                )
+                if velocity is not None:
+                    self.formulation += bc.no_inflow_form(
+                        velocity=velocity, normal=normal, ds=self.ds
+                    )
 
     def initialise_exports(self) -> None:
         """Initialises FESTIM's exports, leaving the chamber quantities aside.

@@ -35,7 +35,7 @@ From `response_curve.py` and `calibration.py`.
 | Response 5% below linear at | 7.9 Ci/m³ |
 | Space-charge field reaches 10% of the applied field at | 41 Ci/m³ |
 
-The current is linear in the activity over eight decades, 1.0% below the ideal value
+The current is linear in the activity over eight decades, about 1% below the ideal value
 because of wall losses. Ion–ion recombination then bends the curve. Beyond 41 Ci/m³
 the fixed-field assumption no longer holds and the results are indicative only.
 
@@ -78,7 +78,8 @@ chamber is far from saturation at these biases, the fit is 2.9% low.
 ## Checks
 
 Charge conservation
-: The Ramo current and the integrated anode flux agree to better than 0.01%. At trace
+: The Ramo current and the integrated anode flux agree to 0.02% on the fine
+  mesh of the studies (300 radial cells). At trace
   levels the extrapolated current matches the balance of generation minus
   recombination to 0.09%.
 

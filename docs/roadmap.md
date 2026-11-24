@@ -8,8 +8,6 @@ threshold.
 
 - Prototype model of a coaxial chamber in air, with response, shape and bias studies
   ([results](results.md)).
-- Measurements digitised from the published figures
-  ([experimental data](experimental_data.md)).
 - Package restructured along the lines of FESTIM: an electrostatic problem and a
   charge transport problem, with FESTIM-style subdomains, boundary conditions and
   exports, a test suite and this documentation.
@@ -41,7 +39,7 @@ threshold.
   moving to that formulation, so the change is best made there and inherited here.
 - **The default electrode condition.** With the floor, the zero density that the
   default sets on a repelling electrode acts as a sink, and the current on a single
-  mesh comes out too low (9.5% at 30 radial cells for the reference chamber).
+  mesh comes out too low (about 6% at 30 radial and 18 axial cells for the reference chamber).
   {class}`~ion_chambers.AbsorbingElectrodeBC` decides what crosses an electrode from
   the force on the carrier and does not have this error. It is opt-in for now. Before
   it becomes the default: a quantity that reports the charge leaving through the
@@ -64,13 +62,14 @@ threshold.
 
 ## Improvements to the code
 
-None of these gives a wrong result today: where the code cannot do something, it
-raises an error. They are what limits the cases the package can describe.
+These are what limits the cases the package can describe. Where the code cannot do
+something it raises an error, with the one exception noted in the first item.
 
 - **Chamber current with any number of electrodes.**
   {class}`~ion_chambers.ChamberCurrent` takes its weighting potential from the
-  potential divided by the bias, which holds for two electrodes without space charge,
-  and raises otherwise. A small Laplace solve, with 1 on the readout electrode and 0
+  potential divided by the bias, which holds for two electrodes without space charge.
+  It raises with another number of electrodes, but it does not check whether the
+  electrostatic problem has a charge density. A small Laplace solve, with 1 on the readout electrode and 0
   on the others, removes the restriction. It is needed for guard rings and for
   space-charge coupling.
 - **Coefficients that depend on more than E/N.** A mobility or a rate is a constant or
@@ -81,7 +80,7 @@ raises an error. They are what limits the cases the package can describe.
 - **Other emitters and sources on the walls.** The beta spectrum and the wall-loss
   Monte Carlo are written for tritium in the gas. Another emitter, or tritium held on
   a wall, needs an emitter object and a wall source. This comes before the memory
-  effect below.
+  effect above.
 - **3D meshes and MPI.** The cell length along the field and the wall-loss projection
   are written with numpy for triangles on one rank. This comes before the wire cage.
 - **Electrostatics.** Only fixed potentials and one permittivity: no dielectric

@@ -20,7 +20,7 @@ pip install -e .
 
 This gives FESTIM 2.2 on DOLFINx 0.11, from conda-forge.
 
-Check the installation with the tests, about 10 s:
+Check the installation with the tests, about a minute:
 
 ```bash
 python -m pytest

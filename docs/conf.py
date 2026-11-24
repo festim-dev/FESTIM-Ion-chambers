@@ -1,8 +1,8 @@
-"""Sphinx configuration for the ion_chambers documentation."""
+"""Sphinx configuration for the FESTIM - Ion chambers documentation."""
 
 project = "FESTIM - Ion chambers"
-author = "ion_chambers contributors"
-copyright = "2026, ion_chambers contributors"
+author = "FESTIM - Ion chambers contributors"
+copyright = "2026, FESTIM - Ion chambers contributors"
 
 extensions = [
     "myst_parser",

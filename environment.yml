@@ -1,6 +1,6 @@
 # Conda environment for the tritium ion chamber model.
 #   conda env create -f environment.yml
-#   conda activate ion-chambers
+#   conda activate ion-chambers-env
 name: ion-chambers-env
 channels:
   - conda-forge

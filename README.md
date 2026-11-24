@@ -14,7 +14,7 @@ carrier gases of the experiments (N₂, Ar) are not in the model.
 
 ```bash
 conda env create -f environment.yml
-conda activate ion-chambers
+conda activate ion-chambers-env
 pip install -e .
 ```
 

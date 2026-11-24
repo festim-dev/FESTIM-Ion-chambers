@@ -88,10 +88,18 @@ Recombination
   gives 0.705. The model's extra loss comes from the low-field corners near the end
   caps and the non-uniform source, which the one-dimensional formula ignores.
 
+Parallel plates
+: For a parallel-plate chamber with a uniform source and two kinds of ions, the share
+  of the pairs lost to recombination agrees with Boag's formula to 1%, and the current
+  extrapolated from two meshes agrees to 0.01%. A transient run ends at the
+  steady-state current. These are tests (`tests/test_verification.py`).
+
 Space charge
 : The perturbation potential was verified against the analytic solution for a
   uniformly charged coaxial gap to 10⁻⁷.
 
 Mesh convergence
 : The error is first order in the cell size. Each quoted current is extrapolated from
-  150 and 300 radial cells.
+  150 and 300 radial cells. The tests check the order on the parallel-plate and the
+  coaxial chamber, and that the extrapolated coaxial current at trace level is the
+  charge of all the pairs created.

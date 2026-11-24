@@ -42,7 +42,7 @@ body[data-theme="dark"] {
 
 .ic-stage {
   border: 1px solid var(--ic-line);
-  border-radius: 0.4rem;
+  border-radius: 6px;
   background: var(--ic-panel);
   margin: 1rem 0 0.5rem;
   overflow: hidden;
@@ -51,7 +51,7 @@ body[data-theme="dark"] {
 .ic-readouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--ic-line); }
 .ic-readout { padding: 0.6rem 0.9rem; min-width: 0; }
 .ic-readout + .ic-readout { border-left: 1px solid var(--ic-line); }
-.ic-label { display: block; font-size: 0.72em; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ic-muted); }
+.ic-label { display: block; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--ic-muted); }
 .ic-value { font-family: var(--font-stack--monospace); font-variant-numeric: tabular-nums; font-size: 1.1em; }
 .ic-meter { height: 4px; background: var(--ic-line); border-radius: 2px; overflow: hidden; margin-top: 4px; }
 .ic-meter span { display: block; height: 100%; width: 100%; background: var(--ic-beta); }

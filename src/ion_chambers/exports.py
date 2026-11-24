@@ -145,9 +145,15 @@ class ChamberCurrent(ChamberSurfaceQuantity):
     def compute(self, problem: ChargeTransportProblem) -> None:
         # The potential difference between the readout electrode and the other one.
         # Dividing the potential by it gives the weighting potential.
+        electrode_bcs = problem.electrostatic_problem.boundary_conditions
+        if len(electrode_bcs) != 2:
+            raise ValueError(
+                f"ChamberCurrent needs two electrodes, not {len(electrode_bcs)}: "
+                f"use ElectrodeCurrent for the current through one electrode"
+            )
         readout_potential = None
         other_potential = None
-        for bc in problem.electrostatic_problem.boundary_conditions:
+        for bc in electrode_bcs:
             if bc.subdomain is self.surface:
                 readout_potential = bc.value
             else:

@@ -323,6 +323,11 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
                 "the electrostatic problem must be initialised and run before the "
                 "transport problem is initialised"
             )
+        if self.potential is not None:
+            raise RuntimeError(
+                "a ChargeTransportProblem can be initialised once: create a new "
+                "problem instead"
+            )
         self._check_inputs_taken_from_elsewhere()
         self.mesh = self.electrostatic_problem.mesh
         self.potential = self.electrostatic_problem.u
@@ -508,6 +513,25 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
             set_by_user.append((bc.subdomain.id, getattr(bc, "species", None)))
 
         electrode_bcs = self.electrostatic_problem.boundary_conditions
+
+        # the pairs of electrode and carrier that still need a condition
+        without_condition = []
+        for bc in electrode_bcs:
+            for carrier in self.gas.carriers:
+                if (bc.subdomain.id, carrier) not in set_by_user:
+                    without_condition.append((bc.subdomain, carrier))
+        if len(without_condition) == 0:
+            return
+
+        # The rule below compares each electrode with the mean potential, which
+        # only tells which carriers an electrode attracts when there are two.
+        if len(electrode_bcs) != 2:
+            raise ValueError(
+                f"the default electrode conditions need two electrodes, not "
+                f"{len(electrode_bcs)}: set an AbsorbingElectrodeBC for each carrier "
+                f"on each electrode in boundary_conditions"
+            )
+
         total = 0.0
         for bc in electrode_bcs:
             total += bc.value

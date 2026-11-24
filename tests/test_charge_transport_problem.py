@@ -689,3 +689,105 @@ def test_absorbing_electrodes_need_no_change_when_the_bias_is_reversed():
     """The same absorbing conditions with the bias reversed give the opposite
     current: which carriers an electrode takes follows from the field."""
     assert np.isclose(run_with_absorbing_electrodes(bias=-500.0), -1.0, rtol=1e-4)
+
+
+# ---- refused instead of giving a wrong number ---------------------------------------
+
+
+def test_initialising_twice_is_refused(coarse_transport):
+    """A second call to initialise raises, because FESTIM would add every boundary
+    condition to the formulation a second time."""
+    coarse_transport.initialise()
+    with pytest.raises(RuntimeError, match="initialised once"):
+        coarse_transport.initialise()
+
+
+def solve_potential_of_three_electrodes() -> ic.ElectrostaticProblem:
+    """A square of gas with electrodes at 100 V and 0 V on two opposite sides and a
+    third at 60 V on part of another side, solved."""
+    mesh = dolfinx.mesh.create_rectangle(
+        MPI.COMM_WORLD,
+        [[0.0, 0.0], [0.01, 0.01]],
+        [20, 20],
+        dolfinx.mesh.CellType.triangle,
+        diagonal=dolfinx.mesh.DiagonalType.crossed,
+    )
+    gas_volume = F.VolumeSubdomain(
+        id=1, material=None, locator=lambda x: np.full(x.shape[1], True)
+    )
+    left = F.SurfaceSubdomain(id=1, locator=lambda x: np.isclose(x[0], 0.0))
+    right = F.SurfaceSubdomain(id=2, locator=lambda x: np.isclose(x[0], 0.01))
+    bottom = F.SurfaceSubdomain(
+        id=3,
+        locator=lambda x: np.isclose(x[1], 0.0) & (x[0] > 0.002) & (x[0] < 0.008),
+    )
+    electrostatics = ic.ElectrostaticProblem()
+    electrostatics.mesh = F.Mesh(mesh)
+    electrostatics.subdomains = [gas_volume, left, right, bottom]
+    electrostatics.boundary_conditions = [
+        ic.FixedPotentialBC(subdomain=left, value=100.0),
+        ic.FixedPotentialBC(subdomain=right, value=0.0),
+        ic.FixedPotentialBC(subdomain=bottom, value=60.0),
+    ]
+    electrostatics.initialise()
+    electrostatics.run()
+    return electrostatics
+
+
+def test_default_electrode_conditions_refuse_three_electrodes():
+    """With three electrodes and no condition set by the user, initialise raises and
+    points to AbsorbingElectrodeBC."""
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=solve_potential_of_three_electrodes(),
+        gas=air(),
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+    )
+    with pytest.raises(ValueError, match="need two electrodes, not 3"):
+        transport.initialise()
+
+
+def test_three_absorbing_electrodes_share_no_net_charge():
+    """With three absorbing electrodes and nothing recombining, the currents through
+    the three electrodes add up to zero next to the largest of them."""
+    electrostatics = solve_potential_of_three_electrodes()
+    currents = []
+    for bc in electrostatics.boundary_conditions:
+        currents.append(ic.ElectrodeCurrent(surface=bc.subdomain))
+    gas = air()
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics,
+        gas=gas,
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+        exports=currents,
+    )
+    for bc in electrostatics.boundary_conditions:
+        for carrier in gas.carriers:
+            transport.boundary_conditions.append(
+                ic.AbsorbingElectrodeBC(subdomain=bc.subdomain, species=carrier)
+            )
+    transport.initialise()
+    transport.run()
+    values = np.array([current.value for current in currents])
+    assert abs(values.sum()) < 0.02 * abs(values).max()
+
+
+def test_chamber_current_refuses_three_electrodes():
+    """ChamberCurrent raises with three electrodes, where its weighting potential
+    would be wrong, and points to ElectrodeCurrent."""
+    electrostatics = solve_potential_of_three_electrodes()
+    readout = electrostatics.boundary_conditions[0].subdomain
+    gas = air()
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics,
+        gas=gas,
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+        exports=[ic.ChamberCurrent(surface=readout)],
+    )
+    for bc in electrostatics.boundary_conditions:
+        for carrier in gas.carriers:
+            transport.boundary_conditions.append(
+                ic.AbsorbingElectrodeBC(subdomain=bc.subdomain, species=carrier)
+            )
+    transport.initialise()
+    with pytest.raises(ValueError, match="ChamberCurrent needs two electrodes"):
+        transport.run()

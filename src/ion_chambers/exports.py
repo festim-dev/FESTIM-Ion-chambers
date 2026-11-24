@@ -151,6 +151,13 @@ class ChamberCurrent(ChamberSurfaceQuantity):
                 f"ChamberCurrent needs two electrodes, not {len(electrode_bcs)}: "
                 f"use ElectrodeCurrent for the current through one electrode"
             )
+        if problem.electrostatic_problem.charge_density is not None:
+            raise ValueError(
+                "ChamberCurrent needs an electrostatic problem without a charge "
+                "density: its weighting potential is the potential divided by the "
+                "bias, which holds only without space charge. Use ElectrodeCurrent "
+                "for the current through one electrode"
+            )
         readout_potential = None
         other_potential = None
         for bc in electrode_bcs:

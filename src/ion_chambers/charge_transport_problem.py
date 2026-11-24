@@ -318,7 +318,7 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
 
     def initialise(self) -> None:
         """Sets up the FESTIM problem from the gas and the electrostatic problem."""
-        if self.electrostatic_problem is None or self.electrostatic_problem.u is None:
+        if self.electrostatic_problem is None or not self.electrostatic_problem.has_run:
             raise RuntimeError(
                 "the electrostatic problem must be initialised and run before the "
                 "transport problem is initialised"

@@ -4,10 +4,10 @@ FESTIM and DOLFINx install through conda, not pip, so the package comes with a c
 environment file.
 
 ```bash
-git clone https://github.com/festim-dev/ion_chambers
-cd ion_chambers
+git clone https://github.com/festim-dev/FESTIM-Ion-chambers
+cd FESTIM-Ion-chambers
 conda env create -f environment.yml
-conda activate ion-chambers
+conda activate ion-chambers-env
 pip install -e .
 ```
 

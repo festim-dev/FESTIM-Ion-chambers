@@ -17,7 +17,7 @@ model in code.
 
 The numbers on this page are for the chamber of the [walkthrough](walkthrough.md)
 (very nearly 1 L) in air at 500 V, with the
-illustrative gas data of the [air example](example_air.md).
+illustrative gas data of the [example case](example_case.md#the-script).
 
 ## Beta decay
 

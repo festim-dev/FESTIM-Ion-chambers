@@ -1,19 +1,16 @@
-# Results so far
+# Example case: a chamber in air
 
-These results are for a generic chamber in air and have not been validated against
-measurements. They show what the model produces and that it behaves sensibly. They are
-not predictions for a real monitor.
+One case runs through this documentation and the scripts in `examples/`: a generic
+1 L coaxial chamber filled with room air. This page shows what the model gives for
+it, then the script that defines it.
 
-The numbers on this page come from the [examples](guide/studies.md#ready-made-examples):
-each section names the two scripts that produce it.
+The case has not been validated against measurements. It shows what the model
+produces and that it behaves sensibly. It is not a prediction for a real monitor.
 
-## Reference case
+## The fields
 
-A 1 L coaxial chamber in room air: rod radius 1.5 mm, can radius 5.0 cm, length
-12.7 cm (length/diameter 1.27), 3 mm insulating rings, anode at +500 V.
-Both are defined in [Example: air and the reference chamber](example_air.md).
-
-## Fields
+The chamber is a rod of radius 1.5 mm in a can of radius 5.0 cm and length 12.7 cm
+(length/diameter 1.27), with 3 mm insulating rings and the anode at +500 V.
 
 ```{figure} images/prototype_fields.png
 :alt: Five maps in the half section of the chamber. The electric field, the density of free electrons, of positive ions and of negative ions, and the recombination rate.
@@ -30,14 +27,77 @@ ions pile up towards the can and negative ions towards the rod. The two overlap 
 in the middle of the gap, and that is where they recombine.
 
 :::{note}
-The two figures on this page were made with the first version of the code, the
+The figures on this page were drawn with the first version of the code, the
 prototype that showed this model could be built on FESTIM. The package reproduces the
 currents of that prototype on the same mesh, and the test suite checks this. At
 100 Ci/m³ the space charge of the ions would distort the field, which the model does
 not apply, so the maps show the pattern rather than exact values.
 :::
 
-## Response to tritium concentration
+## The script
+
+The case is the file `examples/reference_case.py`. It defines the air, the chamber,
+and a function that solves the potential and sets up the transport problem. The other
+scripts in `examples/` import it.
+
+The package does not ship any gas data. You describe the gas yourself, so that every
+number in a result is one you chose and can check. Copy this file as a starting point
+for your own gas and chamber.
+
+:::{warning}
+The values below are reasonable starting points, not validated reference data. The
+way they are scaled with pressure and temperature is deliberately simple. Check both
+against your conditions before relying on a result.
+:::
+
+```{literalinclude} ../examples/reference_case.py
+:language: python
+```
+
+### Values at 1 atm and 293.15 K
+
+| Quantity | Value | Unit |
+|---|---|---|
+| W value | 33.97 | eV |
+| Density | 1.205 | kg/m³ |
+| Positive ion mobility | 2.0 × 10⁻⁴ | m²/V/s |
+| Negative ion mobility | 2.2 × 10⁻⁴ | m²/V/s |
+| Electron mobility (low field) | 0.04 | m²/V/s |
+| Electron characteristic energy D/μ | 1.0 | V |
+| Attachment frequency to O₂ | 1.0 × 10⁸ | 1/s |
+| Ion–ion recombination | 2.0 × 10⁻¹² | m³/s |
+| Electron–ion recombination | 2.0 × 10⁻¹³ | m³/s |
+
+### How the air scales with pressure and temperature
+
+With `n` the gas density relative to 1 atm and 293.15 K:
+
+- the mass density scales as `n`
+- the mobilities scale as `1 / n`
+- the attachment frequency scales as `n²`, because attachment to O₂ is a three-body
+  process
+- the recombination coefficients and the electron characteristic energy are kept
+  constant, which does not hold over a wide pressure range
+
+### Using it
+
+From a script in the `examples/` folder:
+
+```python
+from reference_case import air, reference_chamber
+
+import ion_chambers as ic
+
+chamber = reference_chamber()
+gas = air(pressure=50_000.0)  # Pa
+```
+
+## Studies of this case
+
+The numbers below come from the [examples](guide/studies.md#ready-made-examples):
+each section names the two scripts that produce it.
+
+### Response to tritium concentration
 
 From `response_curve.py` and `calibration.py`.
 
@@ -53,7 +113,7 @@ value because of wall losses. Ion–ion recombination then bends the curve. Beyo
 41 Ci/m³ the fixed-field assumption no longer holds and the results are indicative
 only.
 
-## Chamber shape
+### Chamber shape
 
 From `aspect_ratio_sweep.py` and `shape_comparison.py`. At a fixed gas volume of 1 L
 and a 500 V bias, the length-to-diameter ratio L/D sets a trade-off:
@@ -81,7 +141,7 @@ The linear range is 22 times wider at L/D = 7 than at 1.27. Trace-level sensitiv
 peaks at L/D = 1.27, and the longest chamber gives up only 0.5% of it. (The shape
 sweep uses fewer activities than the response curve, hence 7.8 here and 7.9 above.)
 
-## Bias
+### Bias
 
 From `bias_sweep.py` and `saturation_curve.py`. Saturation curves of the reference
 chamber:

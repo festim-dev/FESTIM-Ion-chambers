@@ -43,8 +43,8 @@ the loop.
 
 `examples/response_curve.py` puts the two patterns together: the same chamber on a
 coarse and on a fine mesh, solved at every activity and extrapolated. It uses
-`build_transport_problem` from the [worked example in air](../example_air.md) to set
-up each problem.
+`build_transport_problem` from the
+[example case](../example_case.md#the-script) to set up each problem.
 
 ```{literalinclude} ../../examples/response_curve.py
 :language: python
@@ -52,8 +52,8 @@ up each problem.
 
 ## Ready-made examples
 
-The `examples/` folder holds the studies behind the [results](../results.md). They
-come in pairs: a sweep that solves the model and writes a JSON file to `results/`,
+The `examples/` folder holds the studies of the
+[example case](../example_case.md#studies-of-this-case). They come in pairs: a sweep that solves the model and writes a JSON file to `results/`,
 and a post-processing script that reads that file, prints the numbers of interest and
 saves a figure.
 

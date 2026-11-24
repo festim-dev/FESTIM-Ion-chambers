@@ -71,6 +71,7 @@ class ElectrostaticProblem(F.ProblemBase):
         settings: the solver settings
         element_degree: the polynomial degree of the potential
         u: the potential (V), after ``initialise``. Also available as ``potential``.
+        has_run: whether ``run`` has solved for the potential
 
     Examples:
         .. code-block:: python
@@ -116,6 +117,7 @@ class ElectrostaticProblem(F.ProblemBase):
         self.charge_density = charge_density
         self.element_degree = element_degree
         self.u = None
+        self.has_run = False
 
     @property
     def potential(self) -> fem.Function | None:
@@ -146,6 +148,11 @@ class ElectrostaticProblem(F.ProblemBase):
         self.create_formulation()
         self.create_solver()
         self.initialise_exports()
+
+    def run(self) -> None:
+        """Solves for the potential."""
+        super().run()
+        self.has_run = True
 
     def define_function_space(self) -> None:
         """Creates the function space, the potential ``u`` and the test function."""

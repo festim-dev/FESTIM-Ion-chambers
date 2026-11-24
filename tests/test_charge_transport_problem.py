@@ -8,7 +8,7 @@ import io4dolfinx
 import numpy as np
 import pytest
 from conftest import ACTIVITIES
-from prototype_case import air, reference_chamber, solve_potential
+from prototype_case import air, prototype_mesh, reference_chamber, solve_potential
 
 import ion_chambers as ic
 
@@ -81,6 +81,24 @@ def test_initialise_needs_a_solved_electrostatic_problem(chamber):
     RuntimeError."""
     transport = ic.ChargeTransportProblem(
         electrostatic_problem=ic.ElectrostaticProblem(), gas=air()
+    )
+    with pytest.raises(RuntimeError, match="electrostatic problem must be"):
+        transport.initialise()
+
+
+def test_initialise_refuses_an_electrostatic_problem_that_was_not_run(chamber):
+    """Initialising with an electrostatic problem that was initialised but not run,
+    whose potential is still zero, raises a RuntimeError."""
+    electrostatics = ic.ElectrostaticProblem()
+    electrostatics.mesh = prototype_mesh(chamber, radial_cells=10, axial_cells=6)
+    electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+    electrostatics.boundary_conditions = [
+        ic.FixedPotentialBC(subdomain=chamber.anode, value=500.0),
+        ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+    ]
+    electrostatics.initialise()
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics, gas=air()
     )
     with pytest.raises(RuntimeError, match="electrostatic problem must be"):
         transport.initialise()
@@ -790,4 +808,28 @@ def test_chamber_current_refuses_three_electrodes():
             )
     transport.initialise()
     with pytest.raises(ValueError, match="ChamberCurrent needs two electrodes"):
+        transport.run()
+
+
+def test_chamber_current_refuses_a_charge_density(chamber):
+    """ChamberCurrent raises when the electrostatic problem has a charge density,
+    where its weighting potential would be wrong."""
+    electrostatics = ic.ElectrostaticProblem()
+    electrostatics.mesh = prototype_mesh(chamber, radial_cells=10, axial_cells=6)
+    electrostatics.subdomains = [chamber.gas, chamber.anode, chamber.cathode]
+    electrostatics.boundary_conditions = [
+        ic.FixedPotentialBC(subdomain=chamber.anode, value=500.0),
+        ic.FixedPotentialBC(subdomain=chamber.cathode, value=0.0),
+    ]
+    electrostatics.charge_density = dolfinx.fem.Constant(electrostatics.mesh.mesh, 1e-9)
+    electrostatics.initialise()
+    electrostatics.run()
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=electrostatics,
+        gas=air(),
+        ionisation_sources=[ic.TritiumInGas(activity=3.7e4)],
+        exports=[ic.ChamberCurrent(surface=chamber.anode)],
+    )
+    transport.initialise()
+    with pytest.raises(ValueError, match="without a charge density"):
         transport.run()

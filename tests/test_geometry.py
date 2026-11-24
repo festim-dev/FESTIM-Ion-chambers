@@ -1,0 +1,182 @@
+import festim as F
+import numpy as np
+import pytest
+
+import ion_chambers as ic
+
+
+def test_volume(chamber):
+    """The reference chamber holds 1 L of gas."""
+    assert np.isclose(chamber.volume, 1e-3)
+
+
+def test_from_volume_sets_the_length(chamber):
+    """from_volume gives the length that makes the annular gas volume equal the
+    request."""
+    expected = 1e-3 / (np.pi * (0.05**2 - 1.5e-3**2))
+    assert np.isclose(chamber.length, expected)
+
+
+@pytest.mark.parametrize("aspect_ratio", [0.4, 1.27, 7.0])
+def test_from_aspect_ratio_keeps_the_volume(aspect_ratio):
+    """from_aspect_ratio returns a chamber with the requested gas volume."""
+    geometry = ic.CoaxialChamber.from_aspect_ratio(1e-3, 1.5e-3, aspect_ratio)
+    assert np.isclose(geometry.volume, 1e-3)
+
+
+@pytest.mark.parametrize("aspect_ratio", [0.4, 1.27, 7.0])
+def test_from_aspect_ratio_sets_length_over_diameter(aspect_ratio):
+    """from_aspect_ratio returns a chamber with the requested length over diameter."""
+    geometry = ic.CoaxialChamber.from_aspect_ratio(1e-3, 1.5e-3, aspect_ratio)
+    assert np.isclose(geometry.length / (2 * geometry.can_radius), aspect_ratio)
+
+
+@pytest.mark.parametrize(
+    "attribute", ["rod_radius", "can_radius", "length", "feedthrough_gap"]
+)
+def test_rejects_non_positive_dimensions(attribute):
+    """A negative radius, length or feedthrough gap raises a ValueError."""
+    dimensions = {"rod_radius": 1e-3, "can_radius": 0.05, "length": 0.1}
+    dimensions[attribute] = -1.0
+    with pytest.raises(ValueError, match=f"{attribute} must be positive"):
+        ic.CoaxialChamber(**dimensions)
+
+
+def test_rejects_wrong_type():
+    """A string for a dimension raises a TypeError."""
+    with pytest.raises(TypeError, match="length must be a float, not str"):
+        ic.CoaxialChamber(rod_radius=1e-3, can_radius=0.05, length="long")
+
+
+def test_rejects_rod_wider_than_can():
+    """A rod wider than the can raises a ValueError."""
+    with pytest.raises(ValueError, match="must be smaller than can_radius"):
+        ic.CoaxialChamber(rod_radius=0.06, can_radius=0.05, length=0.1)
+
+
+def test_rejects_insulator_covering_the_caps():
+    """An insulating ring that reaches the can wall raises a ValueError."""
+    with pytest.raises(ValueError, match="leaves no cathode"):
+        ic.CoaxialChamber(
+            rod_radius=1e-3, can_radius=0.05, length=0.1, feedthrough_gap=0.05
+        )
+
+
+def test_gas_is_a_festim_volume_subdomain(chamber):
+    """The gas of a chamber is a FESTIM volume subdomain."""
+    assert isinstance(chamber.gas, F.VolumeSubdomain)
+
+
+@pytest.mark.parametrize("electrode", ["anode", "cathode"])
+def test_electrodes_are_festim_surface_subdomains(chamber, electrode):
+    """The anode and the cathode of a chamber are FESTIM surface subdomains."""
+    assert isinstance(getattr(chamber, electrode), F.SurfaceSubdomain)
+
+
+def test_electrodes_have_different_ids(chamber):
+    """The anode and the cathode carry different surface ids."""
+    assert chamber.anode.id != chamber.cathode.id
+
+
+def test_mesh_is_a_cylindrical_festim_mesh(chamber):
+    """create_mesh returns a FESTIM mesh in cylindrical coordinates."""
+    mesh = chamber.create_mesh(radial_cells=4, axial_cells=2)
+    assert isinstance(mesh, F.Mesh) and str(mesh.coordinate_system) == "cylindrical"
+
+
+@pytest.mark.parametrize(
+    "point, expected",
+    [
+        ((1.5e-3, 0.05), True),  # on the rod
+        ((0.05, 0.05), False),  # on the can
+        ((0.02, 0.05), False),  # in the gas
+    ],
+)
+def test_is_anode(chamber, point, expected):
+    """Only points on the rod surface are marked as anode."""
+    assert chamber.is_anode(np.array(point)) == expected
+
+
+@pytest.mark.parametrize(
+    "point, expected",
+    [
+        ((0.05, 0.05), True),  # on the can
+        ((0.02, 0.0), True),  # on the bottom cap
+        ((0.02, "top"), True),  # on the top cap
+        ((0.003, 0.0), False),  # on the insulating ring
+        ((1.5e-3, 0.05), False),  # on the rod
+        ((0.02, 0.05), False),  # in the gas
+    ],
+)
+def test_is_cathode(chamber, point, expected):
+    """The can and the end caps beyond the insulating ring are marked as cathode, and
+    nothing else is."""
+    r, z = point
+    z = chamber.length if z == "top" else z
+    assert chamber.is_cathode(np.array([r, z])) == expected
+
+
+@pytest.mark.parametrize(
+    "direction, expected",
+    [
+        ((1, 0, 0), 0.05 - 0.02),  # outwards to the can
+        ((-1, 0, 0), 0.02 - 1.5e-3),  # inwards to the rod
+        ((0, 0, 1), "to the top cap"),
+        ((0, 0, -1), 0.03),  # down to the bottom cap
+        ((0, 1, 0), np.sqrt(0.05**2 - 0.02**2)),  # tangentially, missing the rod
+    ],
+)
+def test_distance_to_wall(chamber, direction, expected):
+    """A ray from inside the gas reaches the wall it points at after the
+    geometrically exact distance."""
+    if expected == "to the top cap":
+        expected = chamber.length - 0.03
+    distance = chamber.distance_to_wall(
+        np.array([[0.02, 0.03]]), np.array([direction], dtype=float)
+    )
+    assert np.isclose(distance[0, 0], expected)
+
+
+def test_mesh_spans_the_gas_radially(chamber):
+    """The mesh runs from the rod radius to the can radius."""
+    r = chamber.create_mesh(radial_cells=10, axial_cells=6).mesh.geometry.x[:, 0]
+    assert np.allclose([r.min(), r.max()], [1.5e-3, 0.05])
+
+
+def test_mesh_spans_the_gas_axially(chamber):
+    """The mesh runs from one end cap to the other."""
+    z = chamber.create_mesh(radial_cells=10, axial_cells=6).mesh.geometry.x[:, 1]
+    assert np.allclose([z.min(), z.max()], [0.0, chamber.length])
+
+
+def test_mesh_cells_are_equally_spaced_radially(chamber):
+    """The radial positions of the nodes of the cell corners are equally spaced."""
+    r = chamber.create_mesh(radial_cells=10, axial_cells=6).mesh.geometry.x[:, 0]
+    corners = np.unique(np.round(r, 12))[::2]
+    assert np.allclose(np.diff(corners), (0.05 - 1.5e-3) / 10)
+
+
+def test_mesh_has_the_requested_number_of_cells(chamber):
+    """The mesh has exactly radial_cells by axial_cells quadrilaterals, each split
+    into four triangles."""
+    mesh = chamber.create_mesh(radial_cells=5, axial_cells=7).mesh
+    assert mesh.topology.index_map(2).size_local == 4 * 5 * 7
+
+
+def test_wall_clustered_grid_spans_the_gas(chamber):
+    """The wall-loss sampling grid starts and ends on the walls in both directions."""
+    r, z = chamber.wall_clustered_grid(11, 13)
+    assert np.allclose([r[0], r[-1], z[0], z[-1]], [1.5e-3, 0.05, 0, chamber.length])
+
+
+@pytest.mark.parametrize("cells", [2.0, "10", None, True])
+def test_create_mesh_rejects_cell_counts_that_are_not_integers(chamber, cells):
+    """A number of cells that is not an integer raises a TypeError."""
+    with pytest.raises(TypeError, match="radial_cells must be an int"):
+        chamber.create_mesh(radial_cells=cells, axial_cells=5)
+
+
+def test_create_mesh_rejects_zero_cells(chamber):
+    """A number of cells that is not positive raises a ValueError."""
+    with pytest.raises(ValueError, match="axial_cells must be positive"):
+        chamber.create_mesh(radial_cells=5, axial_cells=0)

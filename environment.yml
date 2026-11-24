@@ -6,9 +6,15 @@ channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - festim=2.2rc2          # drift terms (ElectromigrationTerm), OutflowBC
+  - festim=2.2               # drift terms (ElectromigrationTerm), OutflowBC, GenericReaction
   - fenics-dolfinx=0.11
+  - io4dolfinx             # reading a mesh and its tags from a file
   - numpy>=2               # np.trapezoid
   - scipy                  # interpolation, brentq
   - matplotlib             # plots
   - pillow                 # reading figures extracted from the slides
+  - pytest                 # tests
+  - ruff                   # formatting and linting
+  - sphinx                 # documentation
+  - furo                   # documentation theme
+  - myst-parser            # markdown pages in the documentation

@@ -13,6 +13,9 @@ threshold.
 - Package restructured along the lines of FESTIM: an electrostatic problem and a
   charge transport problem, with FESTIM-style subdomains, boundary conditions and
   exports, a test suite and this documentation.
+- Verification of the transport problem: manufactured solutions on cartesian and
+  cylindrical meshes, Boag's parallel-plate formula, and a transient run
+  ([checks](results.md#checks)).
 
 ## Next
 
@@ -27,6 +30,22 @@ threshold.
 4. **Space-charge coupling.** A class that iterates between the transport problem and
    the electrostatic problem, as FESTIM couples heat transfer and hydrogen transport,
    to extend the model beyond a few tens of Ci/m³.
+
+## Numerics
+
+- **Stabilisation without added diffusion.** The [diffusion floor](guide/transport.md#stabilisation)
+  keeps the drift stable by raising the diffusion coefficient to tens or hundreds of
+  times its physical value. This limits the model to first order in the cell size and
+  exaggerates every effect of diffusion near a wall. Upwinding in a discontinuous
+  formulation stabilises the drift without diffusing across the field. FESTIM is
+  moving to that formulation, so the change is best made there and inherited here.
+- **The default electrode condition.** With the floor, the zero density that the
+  default sets on a repelling electrode acts as a sink, and the current on a single
+  mesh comes out too low (9.5% at 30 radial cells for the reference chamber).
+  {class}`~ion_chambers.AbsorbingElectrodeBC` decides what crosses an electrode from
+  the force on the carrier and does not have this error. It is opt-in for now. Before
+  it becomes the default: a quantity that reports the charge leaving through the
+  repelling electrode, so that this kind of loss is visible in any run.
 
 ## Later
 

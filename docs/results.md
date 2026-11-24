@@ -97,7 +97,8 @@ Parallel plates
 Manufactured solution
 : With densities chosen in advance and the sources worked out from them, the solved
   densities converge to the chosen ones at second order when the diffusion floor is
-  inactive, and at first order when it sets the diffusion. Also tests.
+  inactive, and at first order when it sets the diffusion, on a cartesian and on a
+  cylindrical mesh. Also tests.
 
 Space charge
 : The perturbation potential was verified against the analytic solution for a

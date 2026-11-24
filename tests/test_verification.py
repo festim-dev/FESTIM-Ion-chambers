@@ -2,8 +2,9 @@
 
 Three cases are used. A parallel-plate chamber with a uniform source and two kinds of
 ions has an analytical collection efficiency (Boag). A manufactured solution between
-the same plates checks the densities themselves. The reference coaxial chamber at an
-activity too low for recombination must collect every pair that is created.
+two electrodes checks the densities themselves, on a cartesian and on a cylindrical
+mesh. The reference coaxial chamber at an activity too low for recombination must
+collect every pair that is created.
 """
 
 from mpi4py import MPI
@@ -169,36 +170,48 @@ def test_transient_current_reaches_the_steady_current():
     assert np.isclose(transient["current"].data[-1], steady["current"].value, rtol=1e-6)
 
 
-# ---- a manufactured solution between the plates --------------------------------------
+# ---- a manufactured solution ---------------------------------------------------------
 # Densities are chosen, the sources that make them a solution of the equations are
-# worked out from them, and the solve must give the chosen densities back.
+# worked out from them, and the solve must give the chosen densities back. The gas is
+# held between an electrode at x = INNER and one at x = OUTER: two plates on a
+# cartesian mesh, two coaxial cylinders on a cylindrical one.
 
-FIELD = BIAS / GAP  # V/m, uniform and along x between the plates
+INNER = 0.01  # m
+OUTER = 0.05  # m
+MMS_BIAS = 500.0  # V, on the inner electrode
 REFERENCE_DENSITY = 1e14  # 1/m3
 
 
 def chosen_positive_density(x):
-    return REFERENCE_DENSITY * (1 + 0.5 * ufl.sin(ufl.pi * x[0] / GAP))
+    position = (x[0] - INNER) / (OUTER - INNER)  # 0 on the inner electrode, 1 outer
+    return REFERENCE_DENSITY * (1 + 0.5 * ufl.sin(ufl.pi * position))
 
 
 def chosen_negative_density(x):
-    return REFERENCE_DENSITY * (1 + 0.5 * ufl.cos(ufl.pi * x[0] / GAP))
+    position = (x[0] - INNER) / (OUTER - INNER)
+    return REFERENCE_DENSITY * (1 + 0.5 * ufl.cos(ufl.pi * position))
 
 
 def manufactured_error(
-    cells: int, positive_diffusivity: float, negative_diffusivity: float
+    cells: int,
+    coordinate_system: str,
+    positive_diffusivity: float,
+    negative_diffusivity: float,
 ) -> float:
     """Solves for the chosen densities and returns the larger of the two relative L2
     errors.
 
     Args:
         cells: the number of cells in each direction
+        coordinate_system: "cartesian" or "cylindrical"
         positive_diffusivity: the diffusion coefficient of the positive ions (m2/s)
         negative_diffusivity: the diffusion coefficient of the negative ions (m2/s)
     """
+    is_cylindrical = coordinate_system == "cylindrical"
+
     mesh = dolfinx.mesh.create_rectangle(
         MPI.COMM_WORLD,
-        [[0.0, 0.0], [GAP, GAP]],
+        [[INNER, 0.0], [OUTER, OUTER - INNER]],
         [cells, cells],
         dolfinx.mesh.CellType.triangle,
         diagonal=dolfinx.mesh.DiagonalType.crossed,
@@ -206,15 +219,15 @@ def manufactured_error(
     gas_volume = F.VolumeSubdomain(
         id=1, material=None, locator=lambda x: np.full(x.shape[1], True)
     )
-    positive_plate = F.SurfaceSubdomain(id=1, locator=lambda x: np.isclose(x[0], 0.0))
-    grounded_plate = F.SurfaceSubdomain(id=2, locator=lambda x: np.isclose(x[0], GAP))
+    inner = F.SurfaceSubdomain(id=1, locator=lambda x: np.isclose(x[0], INNER))
+    outer = F.SurfaceSubdomain(id=2, locator=lambda x: np.isclose(x[0], OUTER))
 
     electrostatics = ic.ElectrostaticProblem()
-    electrostatics.mesh = F.Mesh(mesh)
-    electrostatics.subdomains = [gas_volume, positive_plate, grounded_plate]
+    electrostatics.mesh = F.Mesh(mesh, coordinate_system=coordinate_system)
+    electrostatics.subdomains = [gas_volume, inner, outer]
     electrostatics.boundary_conditions = [
-        ic.FixedPotentialBC(subdomain=positive_plate, value=BIAS),
-        ic.FixedPotentialBC(subdomain=grounded_plate, value=0.0),
+        ic.FixedPotentialBC(subdomain=inner, value=MMS_BIAS),
+        ic.FixedPotentialBC(subdomain=outer, value=0.0),
     ]
     electrostatics.initialise()
     electrostatics.run()
@@ -240,26 +253,39 @@ def manufactured_error(
         reactions=[recombination],
     )
 
-    # the source of each carrier: the divergence of its flux, plus what recombines
+    # The exact field, along x and pointing from the inner to the outer electrode:
+    # uniform between plates, as 1/r between cylinders.
+    def field(x):
+        if is_cylindrical:
+            return MMS_BIAS / (x[0] * np.log(OUTER / INNER))
+        return MMS_BIAS / (OUTER - INNER)
+
+    # the divergence of a flux along x that depends on x only
+    def divergence(flux, x):
+        if is_cylindrical:
+            return flux.dx(0) + flux / x[0]
+        return flux.dx(0)
+
     def recombined(x):
         density_product = chosen_positive_density(x) * chosen_negative_density(x)
         return RECOMBINATION_RATE * density_product
 
+    # the source of each carrier: the divergence of its flux, plus what recombines
     def positive_source(x):
         density = chosen_positive_density(x)
-        velocity = ufl.as_vector([POSITIVE_MOBILITY * FIELD, 0.0])
-        flux = -positive_diffusivity * ufl.grad(density) + density * velocity
-        return ufl.div(flux) + recombined(x)
+        drift = density * POSITIVE_MOBILITY * field(x)
+        flux = -positive_diffusivity * density.dx(0) + drift
+        return divergence(flux, x) + recombined(x)
 
     def negative_source(x):
         density = chosen_negative_density(x)
-        velocity = ufl.as_vector([-NEGATIVE_MOBILITY * FIELD, 0.0])
-        flux = -negative_diffusivity * ufl.grad(density) + density * velocity
-        return ufl.div(flux) + recombined(x)
+        drift = -density * NEGATIVE_MOBILITY * field(x)
+        flux = -negative_diffusivity * density.dx(0) + drift
+        return divergence(flux, x) + recombined(x)
 
-    # No ionisation source: the sources and the conditions on the plates are given
-    # as FESTIM objects. The chosen densities do not vary along the plates, so the
-    # two other sides need no condition.
+    # No ionisation source: the sources and the conditions on the electrodes are
+    # given as FESTIM objects. The chosen densities vary along x only, so the two
+    # other sides need no condition.
     transport = ic.ChargeTransportProblem(electrostatic_problem=electrostatics, gas=gas)
     transport.sources = [
         F.ParticleSource(
@@ -269,58 +295,80 @@ def manufactured_error(
             value=negative_source, volume=gas_volume, species=negative_ions
         ),
     ]
-    for plate in [positive_plate, grounded_plate]:
+    for electrode in [inner, outer]:
         transport.boundary_conditions.append(
             F.FixedConcentrationBC(
-                subdomain=plate, value=chosen_positive_density, species=positive_ions
+                subdomain=electrode,
+                value=chosen_positive_density,
+                species=positive_ions,
             )
         )
         transport.boundary_conditions.append(
             F.FixedConcentrationBC(
-                subdomain=plate, value=chosen_negative_density, species=negative_ions
+                subdomain=electrode,
+                value=chosen_negative_density,
+                species=negative_ions,
             )
         )
     transport.initialise()
     transport.run()
 
     x = ufl.SpatialCoordinate(mesh)
-    norm_of_reference = REFERENCE_DENSITY * GAP  # L2 norm of the reference density
+    weight = electrostatics.mesh.coordinate_system.integration_weight(mesh)
 
-    difference = positive_ions.post_processing_solution - chosen_positive_density(x)
-    squared_error = dolfinx.fem.assemble_scalar(
-        dolfinx.fem.form(difference**2 * ufl.dx)
-    )
-    positive_error = np.sqrt(squared_error) / norm_of_reference
+    def relative_error(carrier, chosen_density) -> float:
+        difference = carrier.post_processing_solution - chosen_density(x)
+        squared_error = dolfinx.fem.assemble_scalar(
+            dolfinx.fem.form(difference**2 * weight * ufl.dx)
+        )
+        squared_norm = dolfinx.fem.assemble_scalar(
+            dolfinx.fem.form(chosen_density(x) ** 2 * weight * ufl.dx)
+        )
+        return np.sqrt(squared_error / squared_norm)
 
-    difference = negative_ions.post_processing_solution - chosen_negative_density(x)
-    squared_error = dolfinx.fem.assemble_scalar(
-        dolfinx.fem.form(difference**2 * ufl.dx)
-    )
-    negative_error = np.sqrt(squared_error) / norm_of_reference
-
+    positive_error = relative_error(positive_ions, chosen_positive_density)
+    negative_error = relative_error(negative_ions, chosen_negative_density)
     return max(positive_error, negative_error)
 
 
-def test_manufactured_solution_converges_at_second_order_without_the_floor():
+@pytest.mark.parametrize("coordinate_system", ["cartesian", "cylindrical"])
+def test_manufactured_solution_converges_at_second_order_without_the_floor(
+    coordinate_system,
+):
     """With diffusion strong enough that the floor does nothing, halving the cell
     size divides the error of the densities by four."""
     coarse = manufactured_error(
-        cells=16, positive_diffusivity=0.01, negative_diffusivity=0.02
+        cells=16,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=0.02,
+        negative_diffusivity=0.03,
     )
     fine = manufactured_error(
-        cells=32, positive_diffusivity=0.01, negative_diffusivity=0.02
+        cells=32,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=0.02,
+        negative_diffusivity=0.03,
     )
     assert np.isclose(np.log2(coarse / fine), 2.0, atol=0.05)
 
 
-def test_manufactured_solution_converges_at_first_order_with_the_floor():
+@pytest.mark.parametrize("coordinate_system", ["cartesian", "cylindrical"])
+def test_manufactured_solution_converges_at_first_order_with_the_floor(
+    coordinate_system,
+):
     """With the weak diffusion of real ions the floor sets the diffusion, and
     halving the cell size halves the error of the densities."""
     coarse = manufactured_error(
-        cells=32, positive_diffusivity=5.0e-6, negative_diffusivity=5.5e-6
+        cells=64,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=5.0e-6,
+        negative_diffusivity=5.5e-6,
     )
     fine = manufactured_error(
-        cells=64, positive_diffusivity=5.0e-6, negative_diffusivity=5.5e-6
+        cells=128,
+        coordinate_system=coordinate_system,
+        positive_diffusivity=5.0e-6,
+        negative_diffusivity=5.5e-6,
     )
     assert np.isclose(np.log2(coarse / fine), 1.0, atol=0.1)
 

@@ -1187,30 +1187,9 @@ background after run 4    8.40e-14 A  (8.8e-05 of the signal)
 background after run 5    8.73e-14 A  (9.1e-05 of the signal)
 ```
 
-The background grows with every run, as the inventory does. **The numbers
-themselves mean little**: the wall data are illustrative. The sketch is there to show
-the chain: exposure history → FESTIM wall problem → release flux → gas activity →
-chamber current.
+The background grows with every run, as the inventory does. The wall data are
+illustrative, so read the chain rather than the values: exposure history → FESTIM
+wall problem → release flux → gas activity → chamber current.
 
-### What a real coupling needs
-
-1. **A source for the direct betas**, `TritiumOnWall`, a child of
-   `IonisationSource`. It would take the near-surface inventory from the FESTIM
-   problem (Bq/m² within the beta range of the surface) and put the ion pairs in the
-   few millimetres of gas next to that wall. It needs the reverse of today's
-   wall-loss Monte Carlo: betas start in the metal and the energy they bring into the
-   gas is counted. A transport problem already sums several sources, so it sits next
-   to `TritiumInGas`.
-2. **Better wall physics.** At room temperature, the memory of a real chamber is
-   often dominated by the surface (oxide layer, adsorbed water, isotope exchange) and
-   not by diffusion in the bulk. FESTIM's surface kinetics or trapping can replace
-   the Sieverts condition used here. This is where measured data is needed most.
-3. **A wall problem for each material.** The can and the anode can be two FESTIM
-   problems (or two subdomains), each with its own area and source.
-4. **A balance for the gas.** Here the gas activity during a purge is the simple
-   ratio of release to flow. A closed chamber, or a slow purge, needs the balance
-   $V \, dA/dt = \lambda \, \varphi_\mathrm{out} \, S_\mathrm{wall} - Q \, A$,
-   stepped together with the wall problem.
-5. **A small class that runs the sequence**: step the wall, and solve the chamber
-   when a reading is wanted. Because the coupling is one way, this is a loop and not
-   an iteration.
+The [roadmap](roadmap.md#tritium-in-the-walls) lists what a full wall coupling adds
+to this chain.

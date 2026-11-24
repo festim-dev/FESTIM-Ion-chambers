@@ -94,6 +94,11 @@ Parallel plates
   extrapolated from two meshes agrees to 0.01%. A transient run ends at the
   steady-state current. These are tests (`tests/test_verification.py`).
 
+Manufactured solution
+: With densities chosen in advance and the sources worked out from them, the solved
+  densities converge to the chosen ones at second order when the diffusion floor is
+  inactive, and at first order when it sets the diffusion. Also tests.
+
 Space charge
 : The perturbation potential was verified against the analytic solution for a
   uniformly charged coaxial gap to 10⁻⁷.

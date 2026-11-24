@@ -46,8 +46,8 @@ chamber = ic.CoaxialChamber.from_aspect_ratio(
 )
 ```
 
-The 1 L chamber of the [reference case](../reference_case.md) is defined in
-[its script](../reference_case.md#the-script).
+The 1 L chamber of the [example case](../example_case.md) is defined in
+[its script](../example_case.md#the-script).
 
 ### Mesh
 

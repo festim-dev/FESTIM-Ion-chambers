@@ -51,7 +51,7 @@ theory
 installation
 quickstart
 walkthrough
-reference_case
+example_case
 ```
 
 ```{toctree}

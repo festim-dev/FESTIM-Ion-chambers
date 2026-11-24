@@ -6,13 +6,13 @@ the detection threshold. It has not been validated against measurements.
 ## Done
 
 - Prototype model of a coaxial chamber in air, with response, shape and bias studies
-  ([reference case](reference_case.md)).
+  ([example case](example_case.md)).
 - Package restructured along the lines of FESTIM: an electrostatic problem and a
   charge transport problem, with FESTIM-style subdomains, boundary conditions and
   exports, a test suite and this documentation.
 - Verification of the transport problem: manufactured solutions on cartesian and
   cylindrical meshes, Boag's parallel-plate formula, and a transient run
-  ([checks](reference_case.md#checks)).
+  ([checks](example_case.md#checks)).
 
 ## Next
 

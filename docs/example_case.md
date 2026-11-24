@@ -1,4 +1,4 @@
-# Reference case: a chamber in air
+# Example case: a chamber in air
 
 One case runs through this documentation and the scripts in `examples/`: a generic
 1 L coaxial chamber filled with room air. This page shows what the model gives for

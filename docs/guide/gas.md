@@ -6,7 +6,7 @@ it is input that you control.
 The package ships no gas data. Transport and reaction coefficients depend on the gas,
 its purity, the pressure and the field, and a value that looks official is easy to
 trust too much. So the gas is always something you define.
-The [reference case](../reference_case.md#the-script) has a complete definition to
+The [example case](../example_case.md#the-script) has a complete definition to
 copy and adapt.
 
 ## Defining a gas
@@ -77,7 +77,7 @@ thermal voltage (for the Einstein relation).
 
 To study a range of pressures, write a function that takes the pressure and returns a
 `Gas` with the coefficients scaled the way you judge right for your gas.
-The [reference case](../reference_case.md#the-script) does exactly that.
+The [example case](../example_case.md#the-script) does exactly that.
 
 ## Coefficients that depend on the field
 

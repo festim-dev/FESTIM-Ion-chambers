@@ -65,7 +65,7 @@ air = ic.Gas(
 ```
 
 [Gas](guide/gas.md) explains each entry, and
-the [reference case](reference_case.md#the-script) has a fuller version that follows
+the [example case](example_case.md#the-script) has a fuller version that follows
 the pressure.
 
 ## 4. The source

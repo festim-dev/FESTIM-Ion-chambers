@@ -1,4 +1,4 @@
-# ion_chambers
+# FESTIM - Ion chambers
 
 A companion package for [FESTIM](https://github.com/festim-dev/FESTIM) to model
 tritium ionisation chambers, the in-line process monitors that read a tritium

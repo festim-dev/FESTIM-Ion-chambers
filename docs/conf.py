@@ -1,6 +1,6 @@
 """Sphinx configuration for the ion_chambers documentation."""
 
-project = "ion_chambers"
+project = "FESTIM - Ion chambers"
 author = "ion_chambers contributors"
 copyright = "2026, ion_chambers contributors"
 
@@ -33,7 +33,7 @@ myst_enable_extensions = ["dollarmath", "amsmath", "colon_fence"]
 myst_heading_anchors = 3
 
 html_theme = "furo"
-html_title = "ion_chambers"
+html_title = "FESTIM - Ion chambers"
 html_extra_path = ["_extra"]  # the prototype report, copied as is
 html_static_path = ["_static"]  # the drawings and animations of the theory page
 html_css_files = ["mechanisms.css"]

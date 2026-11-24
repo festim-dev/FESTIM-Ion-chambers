@@ -56,8 +56,8 @@ discretisation error.
 {class}`~ion_chambers.ElectrodeCurrent`
 : The charge leaving the gas through an electrode per second, from the carrier fluxes
   at that surface. In exact arithmetic its size equals the chamber current. The
-  difference shows the discretisation error of the mesh you used; the two typically
-  agree to better than 0.01%. It is negative on the electrode that collects the
+  difference shows the discretisation error of the mesh you used; for the reference
+  chamber the two agree to about 0.1% at 120 radial cells and 0.02% at 300. It is negative on the electrode that collects the
   negative carriers. For the flux of one carrier alone, use FESTIM's
   `F.SurfaceFlux(field=electrons, surface=chamber.anode)`, in carriers per second.
 

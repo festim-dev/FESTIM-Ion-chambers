@@ -231,3 +231,6 @@ CLAUDE.md
 
 # Local VS Code settings
 .vscode
+
+# Experimental data (kept locally, not in the repo)
+data/experimental/

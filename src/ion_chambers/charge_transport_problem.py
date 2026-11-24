@@ -181,6 +181,13 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
     before. The problem is solved on the mesh of the electrostatic problem, and its
     electrodes are the surfaces that carry a potential there.
 
+    ``sources``, ``drift_terms`` and ``boundary_conditions`` can be set as on any
+    FESTIM problem: :meth:`initialise` adds its own to them. A boundary condition set
+    for a carrier on an electrode replaces the automatic one. Sources and drift terms
+    are given on the volume subdomain of the electrostatic problem. ``mesh``,
+    ``subdomains``, ``species``, ``reactions`` and ``temperature`` cannot be set:
+    they come from the electrostatic problem and the gas.
+
     Calling ``run()`` again after changing the activity of a source reuses everything.
     Any other change needs a new problem.
 
@@ -261,6 +268,7 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
                 "the electrostatic problem must be initialised and run before the "
                 "transport problem is initialised"
             )
+        self._check_inputs_taken_from_elsewhere()
         self.mesh = self.electrostatic_problem.mesh
         self.potential = self.electrostatic_problem.u
 
@@ -285,6 +293,29 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
 
         weight = self.mesh.coordinate_system.integration_weight(self.mesh.mesh)
         self.volume_of_gas = assemble_scalar(weight * self.dx(self.gas_volume.id))
+
+    def _check_inputs_taken_from_elsewhere(self) -> None:
+        """Raises if an attribute that ``initialise`` fills was set by the user.
+
+        The mesh and the subdomains come from the electrostatic problem, and the
+        species, the reactions and the temperature from the gas. A value set on the
+        transport problem would be replaced, so it is refused instead.
+        """
+        taken_from = {
+            "mesh": "electrostatic_problem",
+            "subdomains": "electrostatic_problem",
+            "species": "the carriers of gas",
+            "reactions": "gas",
+            "temperature": "gas",
+        }
+        for name, origin in taken_from.items():
+            value = getattr(self, name)
+            is_unset = value is None or (isinstance(value, list) and len(value) == 0)
+            if not is_unset:
+                raise ValueError(
+                    f"{name} must not be set on a ChargeTransportProblem: it is "
+                    f"taken from {origin}"
+                )
 
     def _create_coefficients(self) -> None:
         """Evaluates the mobilities, diffusivities and rates in the local field."""
@@ -363,12 +394,21 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
         self.reactions = self.gas.reactions
 
     def _create_sources(self) -> None:
-        """Every ionisation creates one of each of the two ionisation products."""
+        """Every ionisation creates one of each of the two ionisation products.
+
+        The sources are added to those the user set in ``sources``. A source the
+        user gave on the volume of the electrostatic problem is moved to the gas
+        volume of this problem, which has the same id and carries the material.
+        """
+        electrostatic_volume = self.electrostatic_problem.volume_subdomains[0]
+        for source in self.sources:
+            if source.volume is electrostatic_volume:
+                source.volume = self.gas_volume
+
         self.pair_production = 0
         for source in self.ionisation_sources:
             self.pair_production += source.create_pair_production(self.mesh, self.gas)
 
-        self.sources = []
         for carrier in self.gas.ionisation_products:
             particle_source = F.ParticleSource(
                 value=self.pair_production, volume=self.gas_volume, species=carrier
@@ -376,7 +416,17 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
             self.sources.append(particle_source)
 
     def _create_drift_terms(self) -> None:
-        self.drift_terms = []
+        """The drift of every carrier in the electric field.
+
+        The terms are added to those the user set in ``drift_terms``. A term the
+        user gave on the volume of the electrostatic problem is moved to the gas
+        volume of this problem, which has the same id and carries the material.
+        """
+        electrostatic_volume = self.electrostatic_problem.volume_subdomains[0]
+        for drift_term in self.drift_terms:
+            if drift_term.subdomain is electrostatic_volume:
+                drift_term.subdomain = self.gas_volume
+
         for carrier in self.gas.carriers:
             drift = MobilityElectromigration(
                 species=carrier,
@@ -393,18 +443,27 @@ class ChargeTransportProblem(F.HydrogenTransportProblem):
 
         Negative carriers are driven to the electrodes above the mean electrode
         potential, positive carriers to those below it.
+
+        The conditions are added to those the user set in ``boundary_conditions``.
+        Where the user gave a condition for a carrier on an electrode, that one is
+        kept and none is created.
         """
+        set_by_user = []
+        for bc in self.boundary_conditions:
+            set_by_user.append((bc.subdomain.id, getattr(bc, "species", None)))
+
         electrode_bcs = self.electrostatic_problem.boundary_conditions
         total = 0.0
         for bc in electrode_bcs:
             total += bc.value
         mean_potential = total / len(electrode_bcs)
 
-        self.boundary_conditions = []
         for bc in electrode_bcs:
             electrode = bc.subdomain
             electrode_is_positive = bc.value > mean_potential
             for carrier in self.gas.carriers:
+                if (electrode.id, carrier) in set_by_user:
+                    continue
                 carrier_is_negative = carrier.charge < 0
                 attracted = carrier_is_negative == electrode_is_positive
                 if attracted:

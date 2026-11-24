@@ -547,3 +547,97 @@ def test_festim_surface_fluxes_add_up_to_the_electrode_current(chamber):
     for carrier, flux in zip(gas.carriers, carrier_fluxes, strict=True):
         total += ic.constants.E_CHARGE * carrier.charge * flux.value
     assert np.isclose(total, electrode_current.value, rtol=1e-6)
+
+
+# ---- what the user sets on the problem, as on any FESTIM problem --------------------
+
+
+def test_source_set_by_the_user_is_kept(coarse_transport, chamber):
+    """A FESTIM source set in sources is still there after initialise."""
+    positive_ions = coarse_transport.gas.carriers[1]
+    extra = F.ParticleSource(value=1e6, volume=chamber.gas, species=positive_ions)
+    coarse_transport.sources = [extra]
+    coarse_transport.initialise()
+    assert extra in coarse_transport.sources
+
+
+def test_source_set_by_the_user_adds_to_the_current(coarse_electrostatics, chamber):
+    """FESTIM sources of both ionisation products, as strong as the ionisation
+    source, double the current at an activity too low for recombination."""
+    activity = 3.7e4
+    gas = air()
+    pair_rate = activity * ic.beta.ion_pairs_per_decay(gas.w_value)  # 1/m3/s
+
+    current = ic.ChamberCurrent(surface=chamber.anode)
+    transport = ic.ChargeTransportProblem(
+        electrostatic_problem=coarse_electrostatics,
+        gas=gas,
+        ionisation_sources=[ic.TritiumInGas(activity=activity)],
+        exports=[current],
+    )
+    for carrier in gas.ionisation_products:
+        extra = F.ParticleSource(value=pair_rate, volume=chamber.gas, species=carrier)
+        transport.sources.append(extra)
+    transport.initialise()
+    transport.run()
+
+    expected = 2 * run_coarse_problem(ic.ChamberCurrent, activity=activity)
+    assert np.isclose(current.value, expected, rtol=1e-6)
+
+
+def test_drift_term_set_by_the_user_is_kept(coarse_transport, chamber):
+    """A drift term set in drift_terms, here a gas flow, is still there after
+    initialise."""
+    mesh = coarse_transport.electrostatic_problem.mesh.mesh
+    V = dolfinx.fem.functionspace(mesh, ("Lagrange", 1, (2,)))
+    gas_velocity = dolfinx.fem.Function(V)  # zero
+    flow = F.AdvectionTerm(
+        velocity=gas_velocity,
+        subdomain=chamber.gas,
+        species=coarse_transport.gas.carriers[1],
+    )
+    coarse_transport.drift_terms = [flow]
+    coarse_transport.initialise()
+    assert flow in coarse_transport.drift_terms
+
+
+def test_boundary_condition_set_by_the_user_is_kept(coarse_transport, chamber):
+    """A boundary condition set in boundary_conditions is still there after
+    initialise."""
+    electrons = coarse_transport.gas.carriers[0]
+    user_bc = F.FixedConcentrationBC(
+        subdomain=chamber.anode, value=0.0, species=electrons
+    )
+    coarse_transport.boundary_conditions = [user_bc]
+    coarse_transport.initialise()
+    assert user_bc in coarse_transport.boundary_conditions
+
+
+def test_user_boundary_condition_replaces_the_automatic_one(coarse_transport, chamber):
+    """With a condition set by the user for one carrier on one electrode, there is
+    still one condition per carrier and electrode: three carriers, two electrodes."""
+    electrons = coarse_transport.gas.carriers[0]
+    user_bc = F.FixedConcentrationBC(
+        subdomain=chamber.anode, value=0.0, species=electrons
+    )
+    coarse_transport.boundary_conditions = [user_bc]
+    coarse_transport.initialise()
+    assert len(coarse_transport.boundary_conditions) == 6
+
+
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("mesh", F.Mesh1D(vertices=np.linspace(0, 1, 5))),
+        ("subdomains", [F.SurfaceSubdomain(id=3)]),
+        ("species", [F.Species("H")]),
+        ("reactions", [None]),
+        ("temperature", 300.0),
+    ],
+)
+def test_rejects_an_input_taken_from_elsewhere(coarse_transport, attribute, value):
+    """Setting an attribute that comes from the electrostatic problem or the gas
+    raises instead of being replaced silently."""
+    setattr(coarse_transport, attribute, value)
+    with pytest.raises(ValueError, match=f"{attribute} must not be set"):
+        coarse_transport.initialise()

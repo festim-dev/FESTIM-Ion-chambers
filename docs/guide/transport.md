@@ -44,6 +44,32 @@ electric field, for the coefficients that depend on E/N.
 A problem is initialised once. To change the gas, the potential or the mesh, create new
 problems. Only the activity of a source can be changed between two calls to `run()`.
 
+## Adding your own FESTIM objects
+
+`sources`, `drift_terms` and `boundary_conditions` can be set as on any FESTIM problem.
+`initialise()` adds its own to what you set:
+
+```python
+# a flow of gas that carries the positive ions along
+flow = F.AdvectionTerm(
+    velocity=gas_velocity, subdomain=chamber.gas, species=positive_ions
+)
+transport.drift_terms = [flow]
+
+# a different condition for the electrons on the anode
+transport.boundary_conditions = [
+    F.FixedConcentrationBC(subdomain=chamber.anode, value=0.0, species=electrons)
+]
+```
+
+A boundary condition that you set for a carrier on an electrode replaces the automatic
+one for that carrier and electrode. Sources and drift terms are given on the volume
+subdomain of the electrostatic problem.
+
+`mesh`, `subdomains`, `species`, `reactions` and `temperature` cannot be set on the
+transport problem and raise an error if they are: they come from the electrostatic
+problem and the gas.
+
 ## Stabilisation
 
 Ions in a chamber are carried by the field far more than they diffuse. Standard finite

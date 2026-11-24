@@ -67,7 +67,6 @@ guide/studies
 
 theory
 results
-experimental_data
 roadmap
 ```
 

@@ -8,8 +8,6 @@ threshold.
 
 - Prototype model of a coaxial chamber in air, with response, shape and bias studies
   ([results](results.md)).
-- Measurements digitised from the published figures
-  ([experimental data](experimental_data.md)).
 - Package restructured along the lines of FESTIM: an electrostatic problem and a
   charge transport problem, with FESTIM-style subdomains, boundary conditions and
   exports, a test suite and this documentation.

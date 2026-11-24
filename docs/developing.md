@@ -6,7 +6,6 @@
 src/ion_chambers/    the package
 tests/               unit and integration tests
 examples/            parameter studies, their post-processing, and the example air and chamber
-data/experimental/   digitised measurements
 docs/                this documentation
 ```
 

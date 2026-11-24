@@ -50,7 +50,10 @@ ic.FixedPotentialBC(subdomain=chamber.anode, value=-500.0)
 ```
 
 The transport problem reads the electrodes and their potentials from the electrostatic
-problem. It works for two electrodes.
+problem. The default electrode conditions and
+{class}`~ion_chambers.ChamberCurrent` need exactly two electrodes. With more, set an
+{class}`~ion_chambers.AbsorbingElectrodeBC` for each carrier on each electrode and
+read the currents with {class}`~ion_chambers.ElectrodeCurrent`.
 
 ## Space charge
 

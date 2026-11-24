@@ -15,7 +15,7 @@ boundary conditions and exports, then initialised and run.
 | Module | Content |
 |---|---|
 | `electrostatic_problem.py` | `ElectrostaticProblem`, `FixedPotentialBC`, `PotentialExport` |
-| `charge_transport_problem.py` | `ChargeTransportProblem`, the stabilisation, and two children of FESTIM's drift term and material |
+| `charge_transport_problem.py` | `ChargeTransportProblem`, the stabilisation (`DiffusionFloor`), and three children of FESTIM classes: `MobilityElectromigration`, `AbsorbingElectrodeBC` and `CellwiseDiffusionMaterial` |
 | `exports.py` | the chamber quantities, children of FESTIM's `DerivedQuantity` |
 | `gas.py` | `Gas`, `ChargeCarrier` (a `festim.Species`), `CarrierReaction` (a `festim.GenericReaction`) |
 | `geometry.py` | `Geometry`, `CoaxialChamber` |
@@ -26,7 +26,7 @@ boundary conditions and exports, then initialised and run.
 ## Tests
 
 ```bash
-python -m pytest                      # everything, about 10 s
+python -m pytest                      # everything
 python -m pytest -m "not slow"        # unit tests only
 python -m pytest tests/test_gas.py -k pressure
 ```
@@ -37,7 +37,7 @@ includes a regression against the currents of the original prototype.
 ## Style
 
 ```bash
-ruff format .
+ruff format src tests examples docs
 ruff check src tests examples
 ```
 
@@ -52,7 +52,7 @@ compact constructs.
 ## Documentation
 
 ```bash
-sphinx-build -b html docs docs/_build/html
+sphinx-build -W -b html docs docs/_build/html
 ```
 
 Pages are Markdown (MyST). The API reference is generated from the docstrings.

@@ -66,9 +66,9 @@ A boundary condition that you set for a carrier on an electrode replaces the aut
 one for that carrier and electrode. Sources and drift terms are given on the volume
 subdomain of the electrostatic problem.
 
-`mesh`, `subdomains`, `species`, `reactions` and `temperature` cannot be set on the
-transport problem and raise an error if they are: they come from the electrostatic
-problem and the gas.
+`mesh`, `subdomains`, `species`, `reactions` and `temperature` must not be set on the
+transport problem: they come from the electrostatic problem and the gas, and
+`initialise()` raises a `ValueError` if they are set.
 
 ## Electrode conditions
 
@@ -92,9 +92,9 @@ for electrode in [chamber.anode, chamber.cathode]:
 
 The two differ on a single mesh. With the default, the zero density on the repelling
 electrode combines with the [stabilisation](#stabilisation) into a sink, and the
-current comes out too low by an amount that falls with the cell size (9.5% at 30
-radial cells for the reference chamber at trace level). With absorbing electrodes
-the same mesh gives the ideal current to 0.003%. Both converge to the same current.
+current comes out too low by an amount that falls with the cell size (about 6% at 30
+radial and 18 axial cells for the reference chamber at trace level). With absorbing
+electrodes the same mesh gives the current of all the pairs created to about 0.02%. Both converge to the same current.
 The absorbing condition neglects the carriers that diffuse against the field to a
 repelling electrode, a share of about the thermal voltage over the bias. It is not
 the default yet: the pinned results of this package were computed with the first.

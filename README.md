@@ -2,13 +2,18 @@
 
 A companion package for [FESTIM](https://github.com/festim-dev/FESTIM) to model
 tritium ionisation chambers (in-line process monitors). It adds charge carriers, an
-electric potential and chamber quantities to FESTIM's own classes. The goal is to reproduce existing measurements first, then
-use the validated model to explore chamber design: the linear range, memory effects
-and the detection threshold.
+electric potential and chamber quantities to FESTIM's own classes. The goal is a model
+for exploring chamber design: the linear range, memory effects and the detection
+threshold.
 
 **Status:** prototype. The model runs for a generic coaxial chamber in room air. It
-has not been compared with measurements yet, because the real vessel geometry and the
-carrier gases of the experiments (N₂, Ar) are not in the model.
+has not been validated against measurements.
+
+![Electric field, carrier densities and recombination rate in a coaxial chamber](docs/images/prototype_fields.png)
+
+*The electric field, the densities of the three charge carriers and the recombination
+rate in a 1 L coaxial chamber in air at 500 V and 100 Ci/m³, in the half section
+(r, z). The lines are electric field lines.*
 
 ## Setup
 
@@ -20,7 +25,7 @@ pip install -e .
 
 This gives FESTIM 2.2 on DOLFINx 0.11, from conda-forge.
 
-Check the installation with the tests, about 10 s:
+Check the installation with the tests:
 
 ```bash
 python -m pytest

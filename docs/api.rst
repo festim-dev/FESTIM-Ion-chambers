@@ -1,7 +1,8 @@
 API reference
 =============
 
-Everything below is available from the top-level package: ``import ion_chambers as ic``.
+Everything below is available from the top-level package, ``import ion_chambers as ic``,
+except where a module path is shown.
 
 Problems
 --------

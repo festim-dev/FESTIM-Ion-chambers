@@ -8,14 +8,15 @@ model in code.
 | | Mechanism | What happens | Scale |
 |---|---|---|---|
 | 1 | [Beta decay](#beta-decay) | A tritium nucleus emits a fast electron, the beta. | 5.7 keV on average |
-| 2 | [Ionisation](#ionisation) | The beta knocks electrons out of gas molecules: ion pairs. | 168 pairs within 0.4 mm |
+| 2 | [Ionisation](#ionisation) | The beta knocks electrons out of gas molecules: ion pairs. | 168 pairs within about 0.4 mm |
 | 3 | [Wall losses](#wall-losses) | A beta emitted near a wall ends in the metal. | within 5 mm of a wall |
 | 4 | [Attachment](#attachment) | A free electron sticks to O₂ and becomes a negative ion. | after 10 ns |
 | 5 | [Drift and diffusion](#drift-and-diffusion) | The field pulls positive and negative charges apart. | 0.6 to 19 m/s |
 | 6 | [Recombination](#recombination) | A positive and a negative ion meet and neutralise. | grows with the activity |
 | 7 | [Collection](#collection-and-the-chamber-current) | The charges reach the electrodes: the current. | 0.97 nA at 1 Ci/m³ |
 
-The numbers on this page are for the 1 L reference chamber in air at 500 V, with the
+The numbers on this page are for the chamber of the [walkthrough](walkthrough.md)
+(very nearly 1 L) in air at 500 V, with the
 illustrative gas data of the [air example](example_air.md).
 
 ## Beta decay
@@ -129,8 +130,8 @@ The beta never hits a nucleus and nothing is destroyed. It only moves an electro
 a molecule to the open gas. Before, the gas could carry no current. Now it holds two
 charges that the electric field of the chamber can pull apart.
 
-The beta itself is far too fast for the field of the chamber to steer. It flies
-straight through the gas until its energy is spent, then it is one more slow electron
+The beta itself is far too fast for the field of the chamber to steer. Only its
+collisions with the gas deflect it, until its energy is spent. Then it is one more slow electron
 among those it freed.
 
 ### The track of one beta
@@ -166,8 +167,9 @@ Follow one beta of 5 700 eV until it stops. Not every molecule it passes is ioni
 
 :::{note}
 The animation is not to scale. Real molecules are about 0.3 nm across and 3.4 nm
-apart, and the whole track is 0.39 mm long. On average the beta leaves one pair every
-2.3 µm, so it passes hundreds of molecules untouched for each one it ionises. The
+apart, and a beta of the average energy ends about 0.39 mm from where it started. It leaves
+one pair every few micrometres, so it passes hundreds of molecules untouched for each
+one it ionises. The
 energies are drawn at random so that the average matches air.
 :::
 
@@ -201,7 +203,8 @@ $$
 
 where $f$ is the wall-loss efficiency of the next section
 ({class}`~ion_chambers.TritiumInGas`). The pairs are created at the point of the
-decay, because the track (0.39 mm) is short next to the gas gap (48 mm).
+decay, because the track (0.39 mm at the average energy) is short next to the gas gap
+(48.5 mm).
 
 ## Wall losses
 
@@ -273,7 +276,7 @@ The drawing above repeats this calculation for a flat wall. In the reference cha
 </div>
 ```
 
-A freed electron loses its extra speed in a few collisions. In air it then meets an
+A freed electron quickly loses its extra speed in collisions. In air it then meets an
 oxygen molecule that captures it, within about 10 ns and at most a few tens of
 micrometres from where it was freed. The charge is not lost. It now sits on a heavy
 negative ion, which moves about 200 times slower than the electron did.
@@ -344,6 +347,13 @@ On top of the drift, the random bumps spread the ions out. This is diffusion, wi
 flux $-D_s \nabla n_s$. During one crossing it moves an ion by less than a millimetre,
 so it matters little here.
 
+In the model, the diffusion coefficient of a carrier defaults to the Einstein
+relation, and the solver raises it where needed to keep the drift stable
+({class}`~ion_chambers.DiffusionFloor`, see the
+[transport guide](guide/transport.md#stabilisation)). That added diffusion is
+numerical, not physical: it makes the error of a current first order in the cell size,
+which is why the studies extrapolate from two meshes.
+
 **In the model.** The drift term is FESTIM's `ElectromigrationTerm`, with the velocity
 set by the mobility ({class}`~ion_chambers.MobilityElectromigration`). The potential
 comes from an {class}`~ion_chambers.ElectrostaticProblem`: see
@@ -381,6 +391,9 @@ second:
 | − 0.7% of the pairs lost to recombination | 6.08 × 10⁹ pairs |
 | × the charge of one electron | **0.97 nA** |
 
+This is the mesh-converged value. A single mesh gives slightly less (0.96 nA in the
+walkthrough).
+
 Read from the bottom up, the table turns a current back into decays: divide the
 current by the charge of one electron, by the two efficiencies and by 168. The result
 is the number of decays per second, and dividing by the gas volume gives the activity
@@ -414,9 +427,9 @@ once. Everything after it is slow.
 
 | | Speed | How long it lasts | How far it goes |
 |---|---|---|---|
-| The beta | 4.4 × 10⁷ m/s (15% of light) | tens of picoseconds | 0.39 mm on average, 4.9 mm at most |
-| A free electron in air | 100 to 4 000 m/s | about 10 ns, until it attaches | at most a few tens of micrometres |
-| An ion | 0.6 to 19 m/s | about 44 ms to cross the gap | up to 48 mm |
+| The beta | 4.4 × 10⁷ m/s (15% of light) | tens of picoseconds | 0.39 mm at the average energy, 4.9 mm at most |
+| A free electron in air | 100 to 4 000 m/s with the example mobility | about 10 ns, until it attaches | at most a few tens of micrometres |
+| An ion | 0.6 to 19 m/s | about 44 ms to cross the gap | up to 48.5 mm |
 
 The slow step sets the behaviour. Ions stay in the gas for tens of milliseconds, a
 billion times longer than the beta that made them. That waiting time is what gives

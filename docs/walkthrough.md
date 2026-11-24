@@ -25,7 +25,7 @@ import numpy as np
 from dolfinx import fem
 
 import ion_chambers as ic
-from ion_chambers.constants import BQ_PER_CI, E_CHARGE
+from ion_chambers.constants import BQ_PER_CI
 ```
 
 ![The chamber and what happens to one decay](images/walkthrough_chamber_overview.png)
@@ -196,7 +196,8 @@ plt.show()
 
 ![The electric potential](images/walkthrough_potential_map.png)
 
-Far from the end caps, the potential is that of an infinite coaxial cable:
+Away from the end caps, the potential is close to that of an infinite coaxial cable
+(the grounded caps pull it down by a few volts at mid-height):
 
 $$
 \varphi(r) = V \, \frac{\ln(b / r)}{\ln(b / a)}, \qquad
@@ -430,7 +431,7 @@ A beta travels a finite distance in the gas, its range: at most 4.9 mm in air, a
 range-energy relation the model uses. The beta loses energy faster as it slows
 down, so the pairs are closer together at the end of the track.
 
-The track is short compared with the 48 mm between the rod and the can. This is why
+The track is short compared with the 48.5 mm between the rod and the can. This is why
 the model does not follow tracks: it creates the pairs at the point of the decay.
 
 ```python
@@ -749,8 +750,8 @@ the walls and under 1% of the pairs recombine. The space-charge field is 0.3% of
 applied field, so neglecting it was justified.
 
 The chain $I = I_\mathrm{ideal} \times \eta_\mathrm{wall} \times
-\eta_\mathrm{collection}$ does not close exactly on this mesh: the current is a
-few percent lower. That gap is the discretisation error of the upwind scheme, not
+\eta_\mathrm{collection}$ does not close exactly on this mesh: the current is
+about 2% lower. That gap is the discretisation error of the upwind scheme, not
 physics. It shrinks in proportion to the cell size, so two meshes are enough to
 remove it.
 
@@ -909,8 +910,8 @@ share that ends as collected charge, the share lost to recombination and the sha
 lost to the walls. The wall loss does not depend on the activity; recombination
 does.
 
-The same loop over the bias, the gas or the chamber shape gives the design studies
-in `examples/`.
+The design studies in `examples/` do the same for the bias and the chamber shape,
+with new problems built for each case.
 
 ```python
 share_collected = sweep_wall * sweep_collection
@@ -1047,7 +1048,7 @@ def concentration_at_surface(t):
 
 
 WALL_DEPTH = 50e-6  # m
-# cells of 2 nm at the surface, growing with depth
+# cells far below a nanometre at the surface, growing with depth
 wall_vertices = WALL_DEPTH * np.linspace(0, 1, 400) ** 3
 
 steel = F.Material(D_0=D_0, E_D=E_D)

@@ -1,8 +1,7 @@
 # Roadmap
 
-The aim is to reproduce the existing measurements first, then use the validated model
-to explore chamber design: the linear range, memory effects and the detection
-threshold.
+The aim is a model for exploring chamber design: the linear range, memory effects and
+the detection threshold. It has not been validated against measurements.
 
 ## Done
 
@@ -23,9 +22,7 @@ threshold.
 2. **Wall losses from a mesh.** A mesh and its tags can already be read from a file
    and used in both problems. What is missing is a wall-loss Monte Carlo that traces
    rays against the mesh boundary instead of analytic cylinders.
-3. **The real 1 L monitor.** Its geometry, then the first comparison with the N₂
-   calibration data.
-4. **Space-charge coupling.** A class that iterates between the transport problem and
+3. **Space-charge coupling.** A class that iterates between the transport problem and
    the electrostatic problem, as FESTIM couples heat transfer and hydrogen transport,
    to extend the model beyond a few tens of Ci/m³.
 
@@ -39,7 +36,7 @@ threshold.
   moving to that formulation, so the change is best made there and inherited here.
 - **The default electrode condition.** With the floor, the zero density that the
   default sets on a repelling electrode acts as a sink, and the current on a single
-  mesh comes out too low (9.5% at 30 radial cells for the reference chamber).
+  mesh comes out too low (about 6% at 30 radial and 18 axial cells for the reference chamber).
   {class}`~ion_chambers.AbsorbingElectrodeBC` decides what crosses an electrode from
   the force on the carrier and does not have this error. It is opt-in for now. Before
   it becomes the default: a quantity that reports the charge leaving through the
@@ -54,7 +51,7 @@ threshold.
   solve the chamber as a steady state whenever a reading is wanted, with the wall
   inventory entering as an extra ionisation source. This gives the memory effect and
   the background drift after an exposure.
-- **20 cc wire cage**, which needs a 3D mesh.
+- **Chambers that need a 3D mesh**, such as a wire cage.
 - **Gas flow** through inlet and outlet ports, and the response to a step in
   concentration.
 - **Columnar recombination** along beta tracks, and scattering in the wall-loss Monte
@@ -79,7 +76,7 @@ raises an error. They are what limits the cases the package can describe.
 - **Other emitters and sources on the walls.** The beta spectrum and the wall-loss
   Monte Carlo are written for tritium in the gas. Another emitter, or tritium held on
   a wall, needs an emitter object and a wall source. This comes before the memory
-  effect below.
+  effect above.
 - **3D meshes and MPI.** The cell length along the field and the wall-loss projection
   are written with numpy for triangles on one rank. This comes before the wire cage.
 - **Electrostatics.** Only fixed potentials and one permittivity: no dielectric

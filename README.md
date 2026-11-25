@@ -3,6 +3,7 @@
 [![CI](https://github.com/festim-dev/FESTIM-Ion-chambers/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/festim-dev/FESTIM-Ion-chambers/actions/workflows/ci.yml)
 [![Documentation](https://github.com/festim-dev/FESTIM-Ion-chambers/actions/workflows/docs.yml/badge.svg?branch=main)](https://festim-dev.github.io/FESTIM-Ion-chambers/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24536962.svg)](https://doi.org/10.5281/zenodo.24536962)
 [![FESTIM 2.2](https://img.shields.io/badge/FESTIM-2.2-blue.svg)](https://github.com/festim-dev/FESTIM)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 

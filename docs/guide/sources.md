@@ -15,8 +15,19 @@ tritium = ic.TritiumInGas(activity=3.7e10, geometry=chamber)  # Bq/m3
 
 To convert from curies, `ic.constants.BQ_PER_CI` is 3.7 × 10¹⁰.
 
+It creates ion pairs at the rate
+
+$$
+S(r, z) = A \, \frac{\bar{E}}{W} \, f(r, z)
+$$
+
+per unit volume and time (m⁻³ s⁻¹), with $A$ the activity concentration (Bq/m³),
+$\bar{E}$ the mean energy of a beta, $W$ the energy per ion pair in the gas and $f$
+the share of the beta energy that stays in the gas (see [Wall losses](#wall-losses)).
+
 Each decay releases a beta with 5.7 keV on average. If all of that energy stays in the
-gas, it makes `mean energy / W` ion pairs: about 168 in air.
+gas, it makes $\bar{E} / W$ ion pairs: about 168 in air. Each pair is one of each of
+the two `ionisation_products` of the gas, so $S$ is the source of both.
 
 ## Wall losses
 

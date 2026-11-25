@@ -52,6 +52,55 @@ Reactions
 Ionisation products
 : The two carriers that each ionisation creates, one negative and one positive.
 
+## Reactions
+
+A reaction turns its reactants into its product at a rate set by a coefficient and
+the densities of the reactants. With one reactant:
+
+$$
+\mathrm{A} \xrightarrow{\;k\;} \mathrm{C}, \qquad r = k \, n_\mathrm{A}
+$$
+
+and with two:
+
+$$
+\mathrm{A} + \mathrm{B} \xrightarrow{\;k\;} \mathrm{C}, \qquad
+r = k \, n_\mathrm{A} \, n_\mathrm{B}
+$$
+
+$r$ is the number of reactions per unit volume and time (m⁻³ s⁻¹), and $n$ a
+density (m⁻³). Each reactant loses $r$ and the product gains $r$. Without a product
+the charges neutralise and are gone: a recombination.
+
+The three reactions of air, with electrons $\mathrm{e^-}$, positive ions
+$\mathrm{P^+}$ and negative ions $\mathrm{N^-}$:
+
+| | Reaction | Rate | Coefficient |
+|---|---|---|---|
+| Attachment | $\mathrm{e^-} + \mathrm{O_2} \rightarrow \mathrm{N^-}$ | $\nu_a \, n_e$ | $\nu_a$ (1/s) |
+| Ion–ion recombination | $\mathrm{P^+} + \mathrm{N^-} \rightarrow \varnothing$ | $\alpha \, n_P \, n_N$ | $\alpha$ (m³/s) |
+| Electron–ion recombination | $\mathrm{P^+} + \mathrm{e^-} \rightarrow \varnothing$ | $\beta \, n_P \, n_e$ | $\beta$ (m³/s) |
+
+```python
+attachment = ic.CarrierReaction(reactant=electrons, product=negative_ions, rate=1.0e8)
+ion_ion = ic.CarrierReaction(reactant=[positive_ions, negative_ions], rate=2.0e-12)
+electron_ion = ic.CarrierReaction(reactant=[positive_ions, electrons], rate=2.0e-13)
+```
+
+The oxygen is not a carrier: it is part of the gas, and its density is folded into
+the attachment frequency $\nu_a$.
+
+Summed over the reactions, these rates give the net production $R_s$ of each carrier
+in the [transport equation](transport.md#what-it-solves). For air:
+
+$$
+\begin{aligned}
+R_e &= - \nu_a n_e - \beta \, n_P n_e \\
+R_P &= - \alpha \, n_P n_N - \beta \, n_P n_e \\
+R_N &= \nu_a n_e - \alpha \, n_P n_N
+\end{aligned}
+$$
+
 ## Relation to FESTIM
 
 `ChargeCarrier` is a child of `festim.Species`, and `CarrierReaction` is a child of

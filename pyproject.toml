@@ -16,7 +16,7 @@ dependencies = ["festim>=2.2", "numpy>=2", "scipy"]
 [project.optional-dependencies]
 test = ["pytest"]
 lint = ["ruff"]
-docs = ["sphinx", "furo", "myst-parser"]
+docs = ["sphinx", "furo", "myst-parser", "sphinx-copybutton"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

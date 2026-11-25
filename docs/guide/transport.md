@@ -28,6 +28,74 @@ transport.run()
 `exports`
 : The [quantities](exports.md) to compute after each run.
 
+## What it solves
+
+For each charge carrier $s$, a steady-state balance of its density $n_s$ (m⁻³):
+
+$$
+\nabla \cdot J_s = S_s + R_s, \qquad
+J_s = -D_s \nabla n_s + n_s v_s, \qquad
+v_s = -z_s \, \mu_s \nabla \varphi
+$$
+
+| Symbol | Meaning | Unit |
+|---|---|---|
+| $J_s$ | flux of the carrier: diffusion plus drift | m⁻² s⁻¹ |
+| $D_s$ | diffusion coefficient | m²/s |
+| $v_s$ | drift velocity in the electric field | m/s |
+| $z_s$ | charge number, +1 or −1 | |
+| $\mu_s$ | mobility | m²/V/s |
+| $\varphi$ | electric potential, from the electrostatic problem | V |
+| $S_s$ | ionisation [source](sources.md), for the two ionisation products | m⁻³ s⁻¹ |
+| $R_s$ | net production by the [reactions](gas.md#reactions) | m⁻³ s⁻¹ |
+
+### Boundary conditions
+
+With $n$ the normal pointing out of the gas:
+
+| Condition | Equation | Class |
+|---|---|---|
+| Outflow | $J_s \cdot n = n_s \, (v_s \cdot n)$ | `festim.OutflowBC` |
+| Zero density | $n_s = 0$ | `festim.FixedConcentrationBC` with `value=0.0` |
+| Absorbing electrode | $J_s \cdot n = n_s \, \max(v_s \cdot n,\ 0)$ | {class}`~ion_chambers.AbsorbingElectrodeBC` |
+| No flux | $J_s \cdot n = 0$ | nothing: any surface without a condition |
+
+Outflow
+: The carrier leaves at its drift velocity and the diffusive flux through the surface
+  is zero. Where the field points the other way ($v_s \cdot n < 0$) the same condition
+  lets the carrier in.
+
+Zero density
+: The surface removes every carrier that touches it.
+
+Absorbing electrode
+: Outflow where the field drives the carrier into the surface, no flux where it drives
+  the carrier away.
+
+No flux
+: Nothing crosses. This is what an insulator gets.
+
+[Electrode conditions](#electrode-conditions) says which of these each electrode gets
+by default.
+
+### Weak formulation
+
+The densities are solved together with continuous linear finite elements, by FESTIM.
+With $w_s$ the test function of carrier $s$:
+
+$$
+\int_\Omega \left( D_s \nabla n_s - n_s v_s \right) \cdot \nabla w_s \, dV
++ \int_{\Gamma_\mathrm{out}} n_s \, (v_s \cdot n) \, w_s \, dS
+= \int_\Omega \left( S_s + R_s \right) w_s \, dV
+$$
+
+$\Gamma_\mathrm{out}$ is where the carrier has an outflow condition. For an absorbing
+electrode, $v_s \cdot n$ in the surface term becomes $\max(v_s \cdot n,\ 0)$. A
+surface without a condition contributes no term, which makes it a no-flux surface.
+On a cylindrical mesh $dV = 2\pi r \, dr \, dz$ and $dS = 2\pi r \, dl$.
+
+$D_s$ here is the diffusion coefficient after [stabilisation](#stabilisation).
+
 ## What it sets up for you
 
 During `initialise()`, the problem builds the FESTIM model from those inputs:
@@ -76,6 +144,11 @@ By default each electrode gets, for each carrier, one of two conditions, chosen 
 comparing the potential of the electrode with the mean of the electrode potentials:
 outflow for the carriers it attracts, zero density for those it repels.
 
+| | Electrode above the mean potential | Electrode below the mean potential |
+|---|---|---|
+| Negative carrier | outflow | zero density |
+| Positive carrier | zero density | outflow |
+
 {class}`~ion_chambers.AbsorbingElectrodeBC` is an alternative that needs no such rule.
 It looks at the force on the carrier at each point of the electrode: where the field
 drives the carrier into the surface it leaves at its drift velocity, and where the
@@ -106,10 +179,12 @@ elements produce oscillations in that regime, and FESTIM does not stabilise it. 
 problem therefore raises the diffusion coefficient in each cell to at least
 
 $$
-D = \max\left(D_\mathrm{phys},\ \tfrac{1}{2}\,\mu\,|E|\,h_E\right)
+D = \max\left(D_\mathrm{phys},\ \tfrac{1}{2}\, a \,\mu\,|E|\,h_E\right)
 $$
 
-where $h_E$ is the size of the cell along the field. This is the classic upwind
+where $D_\mathrm{phys}$ is the diffusion coefficient of the gas data, $|E|$ the field
+strength, $h_E$ the size of the cell along the field and $a$ the `factor` of the
+stabilisation, 1 by default. This is the classic upwind
 scheme, written as extra diffusion. Two properties matter:
 
 - The extra diffusion vanishes where the field is weak, so it does not create

@@ -18,3 +18,4 @@ dependencies:
   - sphinx                 # documentation
   - furo                   # documentation theme
   - myst-parser            # markdown pages in the documentation
+  - sphinx-copybutton      # copy button on the code blocks of the documentation

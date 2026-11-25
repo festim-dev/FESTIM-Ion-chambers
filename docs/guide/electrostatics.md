@@ -27,15 +27,38 @@ potential = electrostatics.potential  # a DOLFINx function, in volts
 
 ## What it solves
 
-Poisson's equation, with the potential fixed on each electrode and no normal field on
-the other boundaries, which are the insulators:
+Poisson's equation for the potential $\varphi$ (V) in the gas:
 
 $$
 -\nabla \cdot (\varepsilon_0 \nabla \varphi) = \rho
 $$
 
-By default there is no charge density, so this is Laplace's equation: the field of the
-empty chamber.
+with $\varepsilon_0$ the permittivity of vacuum and $\rho$ the charge density
+(C/m³). By default there is no charge density, so this is Laplace's equation: the
+field of the empty chamber. The electric field is $E = -\nabla \varphi$.
+
+### Boundary conditions
+
+| Surface | Condition | Set with |
+|---|---|---|
+| Electrode | $\varphi = V$ | {class}`~ion_chambers.FixedPotentialBC` |
+| Insulator | $\nabla \varphi \cdot n = 0$ | nothing: any surface without a condition |
+
+$V$ is the potential you give the electrode and $n$ the normal of the surface. No
+field line crosses an insulator.
+
+### Weak formulation
+
+The problem is solved with continuous finite elements of degree `element_degree`.
+With $w$ a test function that vanishes on the electrodes:
+
+$$
+\int_\Omega \nabla \varphi \cdot \nabla w \, dV
+= \int_\Omega \frac{\rho}{\varepsilon_0} \, w \, dV
+$$
+
+The condition on the insulators needs no term: it is the natural condition of this
+form. On a cylindrical mesh $dV = 2\pi r \, dr \, dz$.
 
 ## Electrodes
 

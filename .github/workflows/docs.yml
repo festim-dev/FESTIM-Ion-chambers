@@ -24,7 +24,7 @@ jobs:
       # FESTIM and DOLFINx are mocked in docs/conf.py, so pip is enough here
       - name: Install
         run: |
-          pip install sphinx furo myst-parser numpy scipy
+          pip install sphinx furo myst-parser sphinx-copybutton numpy scipy
           pip install --no-deps -e .
       - name: Build
         run: sphinx-build -W --keep-going -b html docs docs/_build/html

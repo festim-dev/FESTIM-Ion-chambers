@@ -82,9 +82,7 @@ $\mathrm{P^+}$ and negative ions $\mathrm{N^-}$:
 | Electron–ion recombination | $\mathrm{P^+} + \mathrm{e^-} \rightarrow \varnothing$ | $\beta \, n_P \, n_e$ | $\beta$ (m³/s) |
 
 ```python
-attachment = ic.CarrierReaction(
-    reactant=electrons, product=negative_ions, rate=1.0e8
-)
+attachment = ic.CarrierReaction(reactant=electrons, product=negative_ions, rate=1.0e8)
 ion_ion = ic.CarrierReaction(reactant=[positive_ions, negative_ions], rate=2.0e-12)
 electron_ion = ic.CarrierReaction(reactant=[positive_ions, electrons], rate=2.0e-13)
 ```

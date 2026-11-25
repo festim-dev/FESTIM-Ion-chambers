@@ -446,6 +446,7 @@ article .highlight pre {
   background: transparent;
   font-weight: 400;
   font-style: normal;
+  text-decoration: none;
 }
 :root body .highlight pre span.k,
 :root body .highlight pre span.kc,
@@ -465,6 +466,52 @@ article .highlight pre {
 :root body .highlight pre span.sd {
   color: var(--fd-muted);
   font-style: italic;
+}
+article .highlight button.copybtn {
+  top: var(--fd-space-1);
+  right: var(--fd-space-1);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--fd-radius);
+  background: var(--fd-surface);
+  color: var(--fd-muted);
+  transition: opacity 0.2s, color 0.2s;
+}
+article .highlight button.copybtn svg {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  stroke: currentColor;
+}
+article .highlight button.copybtn:hover,
+article .highlight button.copybtn:active {
+  background: var(--fd-surface);
+  color: var(--fd-ink);
+}
+article .highlight button.copybtn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--fd-focus);
+  outline-offset: 2px;
+}
+article .highlight button.copybtn.success {
+  background: var(--fd-accent);
+  color: var(--fd-on-accent);
+}
+article .highlight button.copybtn::after {
+  font-family: var(--fd-font-body);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fd-muted);
+  background: var(--fd-surface);
+}
+@media (prefers-reduced-motion: reduce) {
+  article .highlight button.copybtn {
+    transition: none;
+  }
 }
 article code.literal {
   border: 0;

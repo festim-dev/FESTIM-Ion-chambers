@@ -10,6 +10,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "sphinx_copybutton",
 ]
 
 # FEniCSx and FESTIM only install through conda. Mocking them lets the documentation
@@ -52,4 +53,15 @@ html_permalinks_icon = (
     '<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
     "</svg>"
 )
+# the copy button of a code block: the Lucide "copy" icon, and no button on printed
+# output (the "text" blocks)
+copybutton_image_svg = (
+    '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20"'
+    ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+    ' stroke-linecap="round" stroke-linejoin="round">'
+    '<rect width="14" height="14" x="8" y="8" rx="2" ry="2" />'
+    '<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />'
+    "</svg>"
+)
+copybutton_selector = "div:not(.highlight-text) > div.highlight > pre"
 exclude_patterns = ["_build"]

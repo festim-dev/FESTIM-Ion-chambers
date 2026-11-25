@@ -547,6 +547,10 @@ article table.docutils th {
   color: var(--fd-muted);
   vertical-align: bottom;
 }
+article table.docutils td:has(> mjx-container),
+article table.docutils td:has(> p > mjx-container) {
+  white-space: nowrap;
+}
 article table.docutils td p,
 article table.docutils th p {
   margin: 0;
@@ -580,6 +584,7 @@ article figcaption p {
 
 article dl.simple > dt,
 article dl.myst > dt {
+  margin-top: var(--fd-space-2);
   font-weight: 600;
   color: var(--fd-ink);
 }

@@ -30,7 +30,7 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 napoleon_use_ivar = True
 
-myst_enable_extensions = ["dollarmath", "amsmath", "colon_fence"]
+myst_enable_extensions = ["dollarmath", "amsmath", "colon_fence", "deflist"]
 myst_heading_anchors = 3
 
 html_theme = "furo"

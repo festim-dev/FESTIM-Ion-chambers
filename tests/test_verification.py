@@ -163,7 +163,7 @@ def test_transient_current_reaches_the_steady_current():
         max_iterations=40,
         transient=True,
         final_time=0.03,
-        stepsize=0.001,
+        stepsize=0.003,
     )
     transient = solve_parallel_plates(cells=50, pair_rate=1e14, settings=settings)
     steady = solve_parallel_plates(cells=50, pair_rate=1e14)
@@ -179,6 +179,7 @@ def test_transient_current_reaches_the_steady_current():
 INNER = 0.01  # m
 OUTER = 0.05  # m
 MMS_BIAS = 500.0  # V, on the inner electrode
+MMS_ROWS = 4  # cells along the electrodes
 REFERENCE_DENSITY = 1e14  # 1/m3
 
 
@@ -202,8 +203,12 @@ def manufactured_error(
     """Solves for the chosen densities and returns the larger of the two relative L2
     errors.
 
+    The chosen densities vary between the electrodes only, so the mesh is a strip
+    MMS_ROWS cells high. Its height shrinks with the cell size, which keeps the
+    cells square: the errors are those of a mesh as high as it is wide.
+
     Args:
-        cells: the number of cells in each direction
+        cells: the number of cells between the electrodes
         coordinate_system: "cartesian" or "cylindrical"
         positive_diffusivity: the diffusion coefficient of the positive ions (m2/s)
         negative_diffusivity: the diffusion coefficient of the negative ions (m2/s)
@@ -213,10 +218,11 @@ def manufactured_error(
     """
     is_cylindrical = coordinate_system == "cylindrical"
 
+    cell_size = (OUTER - INNER) / cells
     mesh = dolfinx.mesh.create_rectangle(
         MPI.COMM_WORLD,
-        [[INNER, 0.0], [OUTER, OUTER - INNER]],
-        [cells, cells],
+        [[INNER, 0.0], [OUTER, MMS_ROWS * cell_size]],
+        [cells, MMS_ROWS],
         dolfinx.mesh.CellType.triangle,
         diagonal=dolfinx.mesh.DiagonalType.crossed,
     )

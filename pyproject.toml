@@ -24,6 +24,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: solves a full model (seconds)"]
+filterwarnings = [
+    # raised inside FESTIM, which still names its P1 space "CG"; nothing to change here
+    'ignore:"CG" element name is deprecated:DeprecationWarning',
+]
 
 [tool.ruff]
 line-length = 88

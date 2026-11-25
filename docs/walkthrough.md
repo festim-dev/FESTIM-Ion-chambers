@@ -28,7 +28,63 @@ import ion_chambers as ic
 from ion_chambers.constants import BQ_PER_CI
 ```
 
-![The chamber and what happens to one decay](images/walkthrough_chamber_overview.png)
+```{raw} html
+<div class="ic-figure ic-wide">
+<svg viewBox="0 0 660 380" role="img" aria-label="A section of the chamber, a can with a rod along its axis, showing a decay, the ion pairs along the beta track, the charges drifting apart, a recombination and a beta lost to the wall">
+        <rect x="230" y="40" width="200" height="300" fill="none" stroke="var(--ic-ink)" stroke-width="2"/>
+        <path d="M330 40 L330 340" stroke="var(--ic-ink)" stroke-width="6" fill="none"/>
+        <text x="330" y="26" font-size="13" fill="var(--ic-ink)" text-anchor="middle">anode rod, +500 V</text>
+        <text x="330" y="362" font-size="13" fill="var(--ic-ink)" text-anchor="middle">can (cathode), 0 V</text>
+
+        <path d="M374 104 L404 156" stroke="var(--ic-beta)" stroke-width="2" fill="none"/>
+        <circle cx="374" cy="104" r="6" fill="var(--ic-beta)"/>
+        <circle cx="379" cy="121" r="4" fill="var(--ic-neg)"/><circle cx="388" cy="116" r="4" fill="var(--ic-pos)"/>
+        <circle cx="386" cy="133" r="4" fill="var(--ic-neg)"/><circle cx="395" cy="128" r="4" fill="var(--ic-pos)"/>
+        <circle cx="393" cy="145" r="4" fill="var(--ic-neg)"/><circle cx="402" cy="140" r="4" fill="var(--ic-pos)"/>
+        <circle cx="400" cy="157" r="4" fill="var(--ic-neg)"/><circle cx="409" cy="152" r="4" fill="var(--ic-pos)"/>
+
+        <circle cx="378" cy="216" r="4" fill="var(--ic-neg)"/>
+        <path d="M370 216 L344 216 M352 210 L344 216 L352 222" stroke="var(--ic-neg)" stroke-width="2" fill="none"/>
+        <circle cx="390" cy="216" r="4" fill="var(--ic-pos)"/>
+        <path d="M398 216 L422 216 M414 210 L422 216 L414 222" stroke="var(--ic-pos)" stroke-width="2" fill="none"/>
+
+        <circle cx="280" cy="112" r="4" fill="var(--ic-pos)"/><circle cx="287" cy="112" r="4" fill="var(--ic-neg)"/>
+
+        <path d="M256 262 L232 290" stroke="var(--ic-beta)" stroke-width="2" fill="none"/>
+        <circle cx="256" cy="262" r="6" fill="var(--ic-beta)"/>
+
+        <path d="M448 76 L384 100" stroke="var(--ic-muted)" stroke-width="1" fill="none"/>
+        <path d="M448 150 L416 146" stroke="var(--ic-muted)" stroke-width="1" fill="none"/>
+        <path d="M448 226 L426 220" stroke="var(--ic-muted)" stroke-width="1" fill="none"/>
+        <text x="454" y="66" font-size="13" fill="var(--ic-ink)">1. Decay</text>
+        <text x="454" y="83" font-size="12" fill="var(--ic-muted)">a tritium atom emits a beta</text>
+        <text x="454" y="140" font-size="13" fill="var(--ic-ink)">2. Ionisation</text>
+        <text x="454" y="157" font-size="12" fill="var(--ic-muted)">the beta leaves ion pairs along</text>
+        <text x="454" y="173" font-size="12" fill="var(--ic-muted)">its track: an electron and a</text>
+        <text x="454" y="189" font-size="12" fill="var(--ic-muted)">positive ion each</text>
+        <text x="454" y="232" font-size="13" fill="var(--ic-ink)">3. Drift</text>
+        <text x="454" y="249" font-size="12" fill="var(--ic-muted)">the field pulls negative charges</text>
+        <text x="454" y="265" font-size="12" fill="var(--ic-muted)">to the rod, positive to the can</text>
+        <text x="454" y="308" font-size="13" fill="var(--ic-ink)">4. Current</text>
+        <text x="454" y="325" font-size="12" fill="var(--ic-muted)">the moving charges make a current</text>
+        <text x="454" y="341" font-size="12" fill="var(--ic-muted)">in the circuit: the reading</text>
+
+        <path d="M212 108 L272 112" stroke="var(--ic-muted)" stroke-width="1" fill="none"/>
+        <path d="M212 284 L228 288" stroke="var(--ic-muted)" stroke-width="1" fill="none"/>
+        <text x="206" y="98" font-size="13" fill="var(--ic-ink)" text-anchor="end">Recombination</text>
+        <text x="206" y="115" font-size="12" fill="var(--ic-muted)" text-anchor="end">a positive and a negative charge</text>
+        <text x="206" y="131" font-size="12" fill="var(--ic-muted)" text-anchor="end">meet and neutralise</text>
+        <text x="206" y="274" font-size="13" fill="var(--ic-ink)" text-anchor="end">Wall loss</text>
+        <text x="206" y="291" font-size="12" fill="var(--ic-muted)" text-anchor="end">this beta hits the wall before</text>
+        <text x="206" y="307" font-size="12" fill="var(--ic-muted)" text-anchor="end">it has spent its energy</text>
+      </svg>
+</div>
+<div class="ic-legend">
+  <span><i class="ic-dot" style="background: var(--ic-beta)"></i>beta</span>
+  <span><i class="ic-dot" style="background: var(--ic-neg)"></i>electron or negative ion</span>
+  <span><i class="ic-dot" style="background: var(--ic-pos)"></i>positive ion</span>
+</div>
+```
 
 ### Every mechanism, in order
 

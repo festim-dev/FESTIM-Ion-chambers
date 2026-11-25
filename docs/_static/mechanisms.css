@@ -28,6 +28,7 @@ body[data-theme="dark"] {
 }
 
 .ic-figure { max-width: 34rem; margin: 1rem 0; }
+.ic-figure.ic-wide { max-width: 44rem; }
 .ic-figure svg, .ic-step svg { width: 100%; height: auto; display: block; }
 .ic-figure svg text, .ic-step svg text { font-family: inherit; }
 

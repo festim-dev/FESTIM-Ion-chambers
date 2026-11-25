@@ -1,5 +1,12 @@
 # FESTIM - Ion chambers
 
+[![CI](https://github.com/festim-dev/FESTIM-Ion-chambers/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/festim-dev/FESTIM-Ion-chambers/actions/workflows/ci.yml)
+[![Documentation](https://github.com/festim-dev/FESTIM-Ion-chambers/actions/workflows/docs.yml/badge.svg?branch=main)](https://festim-dev.github.io/FESTIM-Ion-chambers/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+[![FESTIM 2.2](https://img.shields.io/badge/FESTIM-2.2-blue.svg)](https://github.com/festim-dev/FESTIM)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 A companion package for [FESTIM](https://github.com/festim-dev/FESTIM) to model
 tritium ionisation chambers (in-line process monitors). It adds charge carriers, an
 electric potential and chamber quantities to FESTIM's own classes. The goal is a model

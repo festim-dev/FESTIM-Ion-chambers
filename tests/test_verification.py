@@ -163,7 +163,7 @@ def test_transient_current_reaches_the_steady_current():
         max_iterations=40,
         transient=True,
         final_time=0.03,
-        stepsize=0.001,
+        stepsize=0.003,
     )
     transient = solve_parallel_plates(cells=50, pair_rate=1e14, settings=settings)
     steady = solve_parallel_plates(cells=50, pair_rate=1e14)
